@@ -10,6 +10,7 @@ import select
 import socket
 import SocketServer
 import threading
+import time
 
 class Filter(object):
   """Base class for data filters.
@@ -104,6 +105,12 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     self.port_out = port_out
     self.filter = filter
 
+    # Used to coordinate startup/shutdown in a new thread.
+    self.__is_started = threading.Event()
+    self.__is_shut_down = threading.Event()
+    self.__serving = False
+
+
     try:
         SocketServer.TCPServer.__init__(self,
                                         ('', port_in),
@@ -112,10 +119,54 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       os.system('sudo netstat -l --tcp -n -p')
       raise
 
+
   def serve_forever_in_thread(self):
     """Helper method to start the server in a new background thread."""
     server_thread = threading.Thread(target=self.serve_forever)
     server_thread.setDaemon(True)
     server_thread.start()
 
+    # Wait until the server is started, bug chromium-os:16574
+    self.__is_started.wait()
+
     return server_thread
+
+  # ==========================
+
+  # Override of the version of this method from SocketServer.
+  # It's duplicated, other than adding __is_started event.
+  # Bug chromium-os:16574
+  def serve_forever(self, poll_interval=0.5):
+      """Handle one request at a time until shutdown.
+
+      Polls for shutdown every poll_interval seconds. Ignores
+      self.timeout. If you need to do periodic tasks, do them in
+      another thread.
+      """
+      self.__serving = True
+      self.__is_shut_down.clear()
+      self.__is_started.set()
+
+      while self.__serving:
+          # XXX: Consider using another file descriptor or
+          # connecting to the socket to wake this up instead of
+          # polling. Polling reduces our responsiveness to a
+          # shutdown request and wastes cpu at all other times.
+          r, w, e = select.select([self], [], [], poll_interval)
+          if r:
+              self._handle_request_noblock()
+      self.__is_started.clear()
+      self.__is_shut_down.set()
+
+  # Duplicate override of the version of this method from SocketServer so
+  # that we can access the same __ variables as serve_forever.
+  # Bug chromium-os:16574
+  def shutdown(self):
+      """Stops the serve_forever loop.
+
+      Blocks until the loop has finished. This must be called while
+      serve_forever() is running in another thread, or it will
+      deadlock.
+      """
+      self.__serving = False
+      self.__is_shut_down.wait()
