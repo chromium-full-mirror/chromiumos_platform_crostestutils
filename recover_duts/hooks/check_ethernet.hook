@@ -68,7 +68,7 @@ recover_ethernet_devices() {
   done
   initctl stop flimflam || echo "Flimflam was not running."
   initctl start flimflam
-  sleep 5
+  sleep 30
 }
 
 # Loop through all ethernet devices and see if we can connect to our default
