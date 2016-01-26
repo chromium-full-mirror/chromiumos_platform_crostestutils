@@ -205,8 +205,9 @@ class CTest(object):
     if not quick_update and self.sign_payloads:
       cmd.append('--payload_signing_key=%s' % self.payload_signing_key)
 
+    # Give tests 10 minutes to clean up before shut down.
     res = cros_build_lib.RunCommand(cmd, cwd=self.crosutils_root,
-                                    error_code_ok=True)
+                                    error_code_ok=True, kill_timeout=10 * 60)
     if res.returncode != 0:
       raise TestException('%s exited with code %d: %s' % (' '.join(res.cmd),
                                                           res.returncode,

@@ -279,9 +279,7 @@ class GceAuWorkerTest(cros_test_lib.MockTempDirTestCase):
     """Tests that _HandleFail copies necessary files for repro.
 
     In case of a test failure, _HandleFail should copy necessary files to a
-    debug location, and delete existing GCS/GCE resources. And because of the
-    latter, a final call to Cleanup will not make an additional attempt to
-    delete those resources.
+    debug location.
     """
     worker = GCEAUWorker(self.options, self.test_results_root,
                          project=self.PROJECT, zone=self.ZONE,
@@ -305,20 +303,6 @@ class GceAuWorkerTest(cros_test_lib.MockTempDirTestCase):
     self.PatchObject(worker, '_RunTest', autospec=True,
                      return_value=(0, None, None))
 
-    # Fake resource existance.
-    remote_instances = ('fake-remote-instance',)
-    self.PatchObject(
-        worker.gce_context, 'InstanceExists', autospec=True,
-        side_effect=lambda instance: instance in remote_instances)
-
-    # Fake resource deletors.
-    self.PatchObject(worker.gce_context, 'DeleteImage', autospec=True)
-    # Make DeleteInstance delete the remote resource.
-    def _OverrideDeleteInstance(instance):
-      remote_instances.remove(instance)
-    self.PatchObject(worker.gce_context, 'DeleteInstance', autospec=True,
-                     side_effect=_OverrideDeleteInstance)
-
     # VerifyImage should fail and _HandleFail should be called.
     worker.VerifyImage(None)
 
@@ -327,16 +311,6 @@ class GceAuWorkerTest(cros_test_lib.MockTempDirTestCase):
     self.assertExists(os.path.join(
         self.test_results_failed,
         os.path.basename(self.options.ssh_private_key)))
-
-    # CleanUp will not attempt to delete resources because they should have been
-    # deleted by _HandleFail.
-    worker.instances = dict(smoke='fake-instance')
-    worker.CleanUp()
-
-    # Assert that one and only one attempt was made to delete existing
-    # instances.
-    worker.gce_context.DeleteInstance.assert_called_once_with(mock.ANY)
-
 
 if __name__ == '__main__':
   unittest.main()

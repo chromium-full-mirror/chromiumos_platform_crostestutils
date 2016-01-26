@@ -81,7 +81,6 @@ from chromite.lib import path_util
 from chromite.lib import portage_util
 from crostestutils.au_test_harness import au_worker
 from crostestutils.au_test_harness import constants
-from crostestutils.au_test_harness import update_exception
 
 
 class GCEAUWorker(au_worker.AUWorker):
@@ -98,10 +97,7 @@ class GCEAUWorker(au_worker.AUWorker):
     image: A single GCE image associated with a worker.
     image_link: The URL to the image created.
     instances: GCE VM instances associated with a worker.
-    bg_delete_processes:
-      Background processes that delete stale instances and images.
   """
-
   _GS_PATH_COMMON_PREFIX = 'gs://'
   _GS_URL_COMMON_PREFIX = 'https://storage.googleapis.com/'
   _IMAGE_PREFIX = 'test-image-'
@@ -132,7 +128,7 @@ class GCEAUWorker(au_worker.AUWorker):
     self.instances = {}
 
     # Background processes that delete throw-away instances.
-    self.bg_delete_processes = []
+    self._bg_delete_processes = []
 
     # Load test specifications from <overlay>/scripts/gce_tests.json, if any.
     self._LoadTests()
@@ -161,11 +157,16 @@ class GCEAUWorker(au_worker.AUWorker):
     # Delete existing resources in the background if any.
     bg_delete = Process(target=self._DeleteExistingResources)
     bg_delete.start()
-    self.bg_delete_processes.append(bg_delete)
+    self._bg_delete_processes.append(bg_delete)
 
-    # Creates an image and instances.
-    self._CreateImage(image_path)
-    self._CreateInstances()
+    log_directory, fail_directory = self.GetNextResultsPath('update')
+    # Create an image and instances.
+    try:
+      self._CreateImage(image_path)
+      self._CreateInstances()
+    except:
+      self._HandleFail(log_directory, fail_directory)
+      raise
 
   def VerifyImage(self, unittest, percent_required_to_pass=100, test=''):
     """Verifies the image by running all the required tests.
@@ -185,14 +186,17 @@ class GCEAUWorker(au_worker.AUWorker):
     """
     log_directory_base, fail_directory_base = self.GetNextResultsPath(
         'autotest_tests')
-
     steps = []
     for test in self.tests:
       remote = self.gce_context.GetInstanceIP(self.instances[test['name']])
       # Prefer partial to lambda because of Python's late binding.
       steps.append(partial(self._RunTest, test['name'], remote,
                            log_directory_base, fail_directory_base))
-    return_values = parallel.RunParallelSteps(steps, return_values=True)
+    try:
+      return_values = parallel.RunParallelSteps(steps, return_values=True)
+    except:
+      self._HandleFail(log_directory_base, fail_directory_base)
+      raise
 
     passed = True
     test_reports = {}
@@ -210,7 +214,6 @@ class GCEAUWorker(au_worker.AUWorker):
     return passed
 
   # --- PRIVATE HELPER FUNCTIONS ---
-
   def _RunTest(self, test, remote, log_directory_base, fail_directory_base):
     """Runs a test or a suite of tests on a given remote.
 
@@ -357,51 +360,40 @@ class GCEAUWorker(au_worker.AUWorker):
       custom_tests = portage_util.ReadOverlayFile(
           'scripts/gce_tests.json', board=self.board)
     except portage_util.MissingOverlayException as e:
-      logging.warn('Board overlay not found. Error: %r', e)
+      logging.warning('Board overlay not found. Error: %s', e)
 
     if custom_tests is not None:
       if self.board not in constants.TRUSTED_BOARDS:
-        logging.warn('Custom tests and flags are not allowed for this board '
-                     '(%s)!', self.board)
+        logging.warning('Custom tests and flags are not allowed for this board '
+                        '(%s)!', self.board)
       else:
         # Read the list of tests.
         try:
           json_file = json.loads(custom_tests)
           tests = json_file.get('tests')
         except ValueError as e:
-          logging.warn('scripts/gce_tests.json contains invalid JSON content. '
-                       'Default tests will be run and default flags will be '
-                       'used to create instances. Error: %r', e)
+          logging.warning('scripts/gce_tests.json contains invalid JSON '
+                          'content. Default tests will be run and default '
+                          'flags will be used to create instances. Error: %s',
+                          e)
     self.tests = tests
 
   def _CreateImage(self, image_path):
     """Uploads the gce tarball and creates an image with it."""
-    log_directory, fail_directory = self.GetNextResultsPath('update')
-
     ts = datetime.datetime.fromtimestamp(time.time()).strftime(
         '%Y-%m-%d-%H-%M-%S')
 
     # Upload the GCE tarball to Google Cloud Storage.
     self.tarball_local = image_path
     gs_directory = ('gs://%s/%s' % (self.gcs_bucket, ts))
-    try:
-      self.gscontext.CopyInto(self.tarball_local, gs_directory)
-      self.tarball_remote = '%s/%s' % (gs_directory,
-                                       os.path.basename(self.tarball_local))
-    except Exception as e:
-      raise update_exception.UpdateException(
-          1, 'Update failed. Unable to upload test image GCE tarball to GCS. '
-          'Error: %s' % e)
+    self.tarball_remote = '%s/%s' % (gs_directory,
+                                     os.path.basename(self.tarball_local))
+    self.gscontext.CopyInto(self.tarball_local, gs_directory)
 
-    # Create an image from |image_path| and an instance from the image.
-    image = '%s%s' % (self._IMAGE_PREFIX, ts)
-    try:
-      self.image_link = self.gce_context.CreateImage(
-          image, self._GsPathToUrl(self.tarball_remote))
-      self.image = image
-    except gce.Error as e:
-      self._HandleFail(log_directory, fail_directory)
-      raise update_exception.UpdateException(1, 'Update failed. Error: %r' % e)
+    # Create an image from |image_path|.
+    self.image = self._IMAGE_PREFIX + ts
+    self.image_link = self.gce_context.CreateImage(
+        self.image, self._GsPathToUrl(self.tarball_remote))
 
   def _CreateInstance(self, name, image, **kwargs):
     """Creates a single VM instance with a static IP address."""
@@ -424,63 +416,50 @@ class GCEAUWorker(au_worker.AUWorker):
       self.instances[test['name']] = instance
     parallel.RunParallelSteps(steps)
 
-  def _DeleteExistingResouce(self, resource, existence_checker, deletor):
-    """Deletes a resource if it exists.
-
-    This method checks the existence of a resource using |existence_checker|,
-    and deletes it on true.
-
-    Args:
-      resource: The resource name/url to delete.
-      existence_checker: A callable to check existence. This callable should
-          take |resource| as its first argument.
-      deletor: A callable to perform the deletion. This callable should take
-          |resource| as its first argument.
-
-    Raises:
-      ValueError if existence_checker or deletor is not callable.
-    """
-    if not hasattr(existence_checker, '__call__'):
-      raise ValueError('existence_checker must be a callable')
-    if not hasattr(deletor, '__call__'):
-      raise ValueError('deletor must be a callable')
-
-    if existence_checker(resource):
-      deletor(resource)
-
-  def _DeleteInstance(self, name):
-    """Deletes a VM instance and its IP address."""
-    self.gce_context.DeleteInstance(name)
-    self.gce_context.DeleteAddress(name)
-
   def _DeleteExistingResources(self):
-    """Deletes instances, image and the tarball on GCS if they exist."""
-    steps = []
+    """Deletes all allocated GCP resources."""
+    # There are cases where resources are created at the backend but the
+    # resource creation calls fail, for example due to network errors that
+    # happen when the response is being delivered. So we always make sure to
+    # delete all allocated resources (images, instances, addresses) regardless
+    # of whether the corresponding Create operation succeeded.
 
-    if self.tarball_remote:
-      steps.append(partial(self.gscontext.DoCommand,
-                           ['rm', self.tarball_remote]))
-    if self.image:
-      steps.append(partial(self.gce_context.DeleteImage, self.image))
+    # Delete the GCE instances.
+    steps = [partial(self.gce_context.DeleteInstance, instance) for instance in
+             self.instances.values()]
 
-    for instance in self.instances.values():
-      steps.append(partial(
-          self._DeleteExistingResouce,
-          resource=instance,
-          existence_checker=self.gce_context.InstanceExists,
-          deletor=self._DeleteInstance))
+    def _RunParallelIgnoreErrors(funcs):
+      try:
+        parallel.RunParallelSteps(funcs)
+      except parallel.BackgroundFailure as e:
+        # We don't want to halt the test stage (and thus block commits) for
+        # cleanup errors. Leaked resources will be cleaned up externally.
+        logging.warning(
+            'Ignoring BackgroundFailure while deleting resources: %s', e)
+    _RunParallelIgnoreErrors(steps)
 
-    # Delete all resources in parallel.
-    try:
-      parallel.RunParallelSteps(steps)
-    except Exception as e:
-      logging.warn('Infrastructure failure. Error: %r' % e)
+    # Delete static IP addresses.
+    steps = [partial(self.gce_context.DeleteAddress, instance) for instance in
+             self.instances.values()]
+    _RunParallelIgnoreErrors(steps)
 
-    # Reset variables.
-    self.tarball_remote = None
-    self.image = None
-    self.image_link = None
     self.instances = {}
+
+    # Delete the GCE image.
+    # Have to delete the image after all instances are deleted because if the
+    # image is being used to create an instance (e.g., current process is asked
+    # to terminate during instance creation), it cannot be deleted until the
+    # instance creation ends.
+    if self.image:
+      self.gce_context.DeleteImage(self.image)
+    self.image = self.image_link = None
+
+    # Delete the tarball uploaded GCS.
+    # For the same reason, it's safer to delete the tarball after the image is
+    # deleted.
+    if self.tarball_remote:
+      self.gscontext.DoCommand(['rm', self.tarball_remote])
+    self.tarball_remote = None
 
   def _HandleFail(self, log_directory, fail_directory):
     """Handles test failures.
@@ -497,22 +476,17 @@ class GCEAUWorker(au_worker.AUWorker):
     if not os.path.isdir(parent_dir):
       os.makedirs(parent_dir)
 
-    # Copy logs. Must be done before moving image, as this creates
-    # |fail_directory|.
     try:
+      # Copy logs. Must be done before moving image, as this creates
+      # |fail_directory|.
       shutil.copytree(log_directory, fail_directory)
-    except shutil.Error as e:
-      logging.warning('Ignoring errors while copying logs: %s', e)
 
-    # Copy GCE tarball and ssh private key for debugging.
-    try:
+      # Copy GCE tarball and ssh private key for debugging.
       shutil.copy(self.tarball_local, fail_directory)
       if self.ssh_private_key is not None:
         shutil.copy(self.ssh_private_key, fail_directory)
-    except shutil.Error as e:
-      logging.warning('Ignoring errors while copying GCE tarball: %s', e)
-
-    self._DeleteExistingResources()
+    except (shutil.Error, OSError, IOError) as e:
+      logging.warning('Ignoring error while copying logs: %s', e)
 
   def _GsPathToUrl(self, gs_path):
     """Converts a gs:// path to a URL.
@@ -535,6 +509,6 @@ class GCEAUWorker(au_worker.AUWorker):
 
   def _WaitForBackgroundDeleteProcesses(self):
     """Waits for all background proecesses to finish."""
-    for p in self.bg_delete_processes:
+    for p in self._bg_delete_processes:
       p.join()
-    self.bg_delete_processes = []
+    self._bg_delete_processes = []
