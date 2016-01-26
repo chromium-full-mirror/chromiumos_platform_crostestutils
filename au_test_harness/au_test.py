@@ -4,6 +4,8 @@
 
 """Module containing a test suite that is run to test auto updates."""
 
+from __future__ import print_function
+
 import os
 import re
 import time
@@ -71,7 +73,7 @@ class AUTest(unittest.TestCase):
         port_in=proxy_port,
         address_out='127.0.0.1',
         port_out=dev_server_wrapper.DEFAULT_PORT,
-        filter=update_filter
+        data_filter=update_filter
     )
     proxy.serve_forever_in_thread()
     try:
@@ -149,6 +151,7 @@ class AUTest(unittest.TestCase):
       def __init__(self):
         """Defines variable shared across all connections."""
         self.close_count = 0
+        self.data_size = 0
 
       def setup(self):
         """Called once at the start of each connection."""
@@ -212,6 +215,10 @@ class AUTest(unittest.TestCase):
       It does this by inserting 3 20 second delays when transmitting
       data after 2M has been sent.
       """
+      def __init__(self):
+        """Defines variable shared across all connections."""
+        self.data_size = 0
+        self.delay_count = 0
 
       def setup(self):
         """Called once at the start of each connection."""

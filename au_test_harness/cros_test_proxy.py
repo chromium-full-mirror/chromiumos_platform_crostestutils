@@ -4,6 +4,8 @@
 
 """Module containing classes pertaining to inserting a proxy in a test."""
 
+from __future__ import print_function
+
 import os
 import select
 import socket
@@ -46,14 +48,14 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
     def setup(self):
       """Setup is called once for each connection proxied."""
-      self.server.filter.setup()
+      self.server.data_filter.setup()
 
     def handle(self):
       """Handles each incoming connection.
 
          Opens a new connection to the port we are proxing to, then
          passes each packet along in both directions after passing
-         them through the filter object passed in.
+         them through the Filter object passed in.
       """
       # Open outgoing socket
       s_in = self.request
@@ -61,12 +63,13 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       s_out.connect((self.server.address_out, self.server.port_out))
 
       while True:
-        rlist, wlist, xlist = select.select([s_in, s_out], [], [])
+        rlist, _, _ = select.select([s_in, s_out], [], [])
 
         if s_in in rlist:
           data = s_in.recv(1024)
-          data = self.server.filter.InBound(data)
-          if not data: break
+          data = self.server.data_filter.InBound(data)
+          if not data:
+            break
           try:
             # If there is any error sending data, close both connections.
             s_out.sendall(data)
@@ -75,8 +78,9 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
         if s_out in rlist:
           data = s_out.recv(1024)
-          data = self.server.filter.OutBound(data)
-          if not data: break
+          data = self.server.data_filter.OutBound(data)
+          if not data:
+            break
           try:
             # If there is any error sending data, close both connections.
             s_in.sendall(data)
@@ -87,21 +91,21 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       s_out.close()
 
   def __init__(self,
-               filter,
+               data_filter,
                port_in=8081,
                address_out='127.0.0.1', port_out=8080):
     """Configures the proxy object.
 
     Args:
-      filter: An instance of a subclass of Filter.
+      data_filter: An instance of a subclass of Filter.
       port_in: Port on which to listen for incoming connections.
       address_out: Address to which outgoing connections will go.
-      address_port: Port to which outgoing connections will go.
+      port_out: Port to which outgoing connections will go.
     """
     self.port_in = port_in
     self.address_out = address_out
     self.port_out = port_out
-    self.filter = filter
+    self.data_filter = data_filter
 
     # Used to coordinate startup/shutdown in a new thread.
     self.__is_started = threading.Event()
@@ -148,7 +152,7 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       # connecting to the socket to wake this up instead of
       # polling. Polling reduces our responsiveness to a
       # shutdown request and wastes cpu at all other times.
-      r, w, e = select.select([self], [], [], poll_interval)
+      r, _, _ = select.select([self], [], [], poll_interval)
       if r:
         self._handle_request_noblock()
 
@@ -167,4 +171,3 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     """
     self.__serving = False
     self.__is_shut_down.wait()
-

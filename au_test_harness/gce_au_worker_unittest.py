@@ -306,15 +306,16 @@ class GceAuWorkerTest(cros_test_lib.MockTempDirTestCase):
                      return_value=(0, None, None))
 
     # Fake resource existance.
-    remote_instance = 'fake-remote-instance'
-    self.PatchObject(worker.gce_context, 'InstanceExists', autospec=True,
-                     side_effect=lambda instance: remote_instance is not None)
+    remote_instances = ('fake-remote-instance',)
+    self.PatchObject(
+        worker.gce_context, 'InstanceExists', autospec=True,
+        side_effect=lambda instance: instance in remote_instances)
 
     # Fake resource deletors.
     self.PatchObject(worker.gce_context, 'DeleteImage', autospec=True)
     # Make DeleteInstance delete the remote resource.
-    def _OverrideDeleteInstance(_):
-      remote_instance = None
+    def _OverrideDeleteInstance(instance):
+      remote_instances.remove(instance)
     self.PatchObject(worker.gce_context, 'DeleteInstance', autospec=True,
                      side_effect=_OverrideDeleteInstance)
 

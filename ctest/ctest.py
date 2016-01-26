@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 #
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -6,8 +6,9 @@
 
 """Wrapper for tests that are run on builders."""
 
-import logging
-import optparse
+from __future__ import print_function
+
+import argparse
 import os
 import sys
 
@@ -17,6 +18,7 @@ sys.path.append(constants.SOURCE_ROOT)
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 
 from chromite.lib import cros_build_lib
+from chromite.lib import cros_logging as logging
 from crostestutils.lib import image_extractor
 from crostestutils.lib import test_helper
 
@@ -46,25 +48,25 @@ class CTest(object):
     whitelist_chrome_crashes: Whether to treat Chrome crashes as non-fatal.
   """
 
-  def __init__(self, options):
+  def __init__(self, opts):
     """Initializes the test object.
 
     Args:
-      options:  Parsed options for module.
+      opts: Parsed args for module.
     """
     self.base = None
-    self.board = options.board
-    self.archive_dir = options.archive_dir
+    self.board = opts.board
+    self.archive_dir = opts.archive_dir
     self.crosutils_root = os.path.join(constants.SOURCE_ROOT, 'src', 'scripts')
-    self.no_graphics = options.no_graphics
-    self.remote = options.remote
+    self.no_graphics = opts.no_graphics
+    self.remote = opts.remote
     # TODO(sosa):  Remove once signed payload bug is resolved.
-    #self.sign_payloads = not options.cache
+    #self.sign_payloads = not opts.cache
     self.sign_payloads = False
-    self.target = options.target_image
-    self.test_results_root = options.test_results_root
-    self.type = options.type
-    self.whitelist_chrome_crashes = options.whitelist_chrome_crashes
+    self.target = opts.target_image
+    self.test_results_root = opts.test_results_root
+    self.type = opts.type
+    self.whitelist_chrome_crashes = opts.whitelist_chrome_crashes
 
     self.public_key = None
     if self.sign_payloads:
@@ -74,11 +76,11 @@ class CTest(object):
     else:
       self.payload_signing_key = None
 
-    self.jobs = options.jobs
-    self.nplus1_archive_dir = options.nplus1_archive_dir
+    self.jobs = opts.jobs
+    self.nplus1_archive_dir = opts.nplus1_archive_dir
 
     # An optional ssh private key used for testing.
-    self.ssh_private_key = options.ssh_private_key
+    self.ssh_private_key = opts.ssh_private_key
 
   def GeneratePublicKey(self):
     """Returns the path to a generated public key from the UE private key."""
@@ -143,7 +145,8 @@ class CTest(object):
     else:
       cmd.append('--basic_suite')
 
-    if self.type != 'vm': cmd.append('--novm')
+    if self.type != 'vm':
+      cmd.append('--novm')
     try:
       cros_build_lib.RunCommand(cmd, cwd=self.crosutils_root)
     except cros_build_lib.RunCommandError:
@@ -164,6 +167,8 @@ class CTest(object):
     Args:
       only_verify: Only verify the target image.
       quick_update: Do a quick update test.
+      suite: The suite of tests to run.
+
     Raises:
       TestException: If the cros_au_test_harness command returns an error code.
     """
@@ -189,10 +194,12 @@ class CTest(object):
     elif quick_update:
       cmd.append('--test_prefix=SimpleTestUpdateAndVerify')
 
-    if self.test_results_root: cmd.append('--test_results_root=%s' %
-                                          self.test_results_root)
-    if self.no_graphics: cmd.append('--no_graphics')
-    if self.whitelist_chrome_crashes: cmd.append('--whitelist_chrome_crashes')
+    if self.test_results_root:
+      cmd.append('--test_results_root=%s' % self.test_results_root)
+    if self.no_graphics:
+      cmd.append('--no_graphics')
+    if self.whitelist_chrome_crashes:
+      cmd.append('--whitelist_chrome_crashes')
 
     # We did not generate signed payloads if this is a |quick_update| test.
     if not quick_update and self.sign_payloads:
@@ -208,78 +215,74 @@ class CTest(object):
 
 def main():
   test_helper.SetupCommonLoggingFormat()
-  parser = optparse.OptionParser()
-  parser.add_option('-b', '--board',
-                    help='board for the image to compare against.')
-  parser.add_option('--archive_dir',
-                    help='Directory containing previously archived images.')
-  parser.add_option('--cache', default=False, action='store_true',
-                    help='Cache payloads')
-  parser.add_option('--jobs', default=test_helper.CalculateDefaultJobs(),
-                    type=int,
-                    help='Number of threads to run in parallel.')
-  parser.add_option('--no_graphics', action='store_true', default=False,
-                    help='Disable graphics for the vm test.')
-  parser.add_option('--only_verify', action='store_true', default=False,
-                    help='Only run basic verification suite.')
-  parser.add_option('--quick_update', action='store_true',
-                    help='Run a quick update test. This will run a subset of '
-                         'test suite after running autoupdate from target '
-                         'image to itself.')
-  parser.add_option('--nplus1_archive_dir', default=None,
-                    help='If set, directory to archive nplus1 payloads.')
-  parser.add_option('--remote', default='0.0.0.0',
-                    help='For real tests, ip address of the target machine.')
-  parser.add_option('--target_image', default=None,
-                    help='Target image to test.')
-  parser.add_option('--suite', default=None, help='Test suite to run.')
-  parser.add_option('--test_results_root', default=None,
-                    help='Root directory to store test results.  Should '
-                    'be defined relative to chroot root.')
-  parser.add_option('--type', default='vm',
-                    help='type of test to run: [vm, real, gce]. Default: vm.')
-  parser.add_option('--verbose', default=False, action='store_true',
-                    help='Print out added debugging information')
-  parser.add_option('--whitelist_chrome_crashes', default=False,
-                    dest='whitelist_chrome_crashes', action='store_true',
-                    help='Treat Chrome crashes as non-fatal.')
-  parser.add_option('--ssh_private_key', default=None,
-                    help='Path to the private key to use to ssh into the image '
-                    'as the root user')
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-b', '--board',
+                      help='board for the image to compare against.')
+  parser.add_argument('--archive_dir',
+                      help='Directory containing previously archived images.')
+  parser.add_argument('--cache', default=False, action='store_true',
+                      help='Cache payloads')
+  parser.add_argument('--jobs', default=test_helper.CalculateDefaultJobs(),
+                      type=int,
+                      help='Number of threads to run in parallel.')
+  parser.add_argument('--no_graphics', action='store_true', default=False,
+                      help='Disable graphics for the vm test.')
+  parser.add_argument('--only_verify', action='store_true', default=False,
+                      help='Only run basic verification suite.')
+  parser.add_argument('--quick_update', action='store_true',
+                      help='Run a quick update test. This will run a subset of '
+                      'test suite after running autoupdate from target '
+                      'image to itself.')
+  parser.add_argument('--nplus1_archive_dir', default=None,
+                      help='If set, directory to archive nplus1 payloads.')
+  parser.add_argument('--remote', default='0.0.0.0',
+                      help='For real tests, ip address of the target machine.')
+  parser.add_argument('--target_image', default=None,
+                      help='Target image to test.')
+  parser.add_argument('--suite', default=None, help='Test suite to run.')
+  parser.add_argument('--test_results_root', default=None,
+                      help='Root directory to store test results.  Should '
+                      'be defined relative to chroot root.')
+  parser.add_argument('--type', default='vm',
+                      help='type of test to run: [vm, real, gce]. Default: vm.')
+  parser.add_argument('--verbose', default=False, action='store_true',
+                      help='Print out added debugging information')
+  parser.add_argument('--whitelist_chrome_crashes', default=False,
+                      dest='whitelist_chrome_crashes', action='store_true',
+                      help='Treat Chrome crashes as non-fatal.')
+  parser.add_argument('--ssh_private_key', default=None,
+                      help='Path to the private key to use to ssh into the '
+                      'image as the root user')
 
-  # Set the usage to include flags.
-  def _ParserError(msg):
-    print >> sys.stderr, parser.format_help()
-    print >> sys.stderr, 'Error: %s' % msg
-    sys.exit(2)
-  parser.error = _ParserError
-  (options, args) = parser.parse_args()
+  opts = parser.parse_args()
 
-  if args: parser.error('Extra args found %s.' % args)
-  if not options.board: parser.error('Need board for image to compare against.')
-  if options.only_verify and options.quick_update: parser.error(
-      'Only one of --only_verify or --quick_update should be specified.')
+  if not opts.board:
+    parser.error('Need board for image to compare against.')
+  if opts.only_verify and opts.quick_update:
+    parser.error(
+        'Only one of --only_verify or --quick_update should be specified.')
 
-  # force absolute path for these options, since a chdir occurs deeper in the
+  # force absolute path for these opts, since a chdir occurs deeper in the
   # codebase.
   for x in ('nplus1_archive_dir', 'target_image', 'test_results_root'):
-    if x == 'target_image' and options.type == 'gce':
+    if x == 'target_image' and opts.type == 'gce':
       # In this case |target_image| is a Google Storage path.
       continue
-    val = getattr(options, x)
+    val = getattr(opts, x)
     if val is not None:
-      setattr(options, x, os.path.abspath(val))
+      setattr(opts, x, os.path.abspath(val))
 
-  ctest = CTest(options)
-  if ctest.sign_payloads: ctest.GeneratePublicKey()
+  ctest = CTest(opts)
+  if ctest.sign_payloads:
+    ctest.GeneratePublicKey()
   ctest.FindTargetAndBaseImages()
-  if not options.only_verify:
-    ctest.GenerateUpdatePayloads(not options.quick_update)
+  if not opts.only_verify:
+    ctest.GenerateUpdatePayloads(not opts.quick_update)
   try:
-    ctest.RunAUTestHarness(options.only_verify, options.quick_update,
-                           options.suite)
+    ctest.RunAUTestHarness(opts.only_verify, opts.quick_update,
+                           opts.suite)
   except TestException as e:
-    if options.verbose:
+    if opts.verbose:
       cros_build_lib.Die(str(e))
 
     sys.exit(1)

@@ -9,13 +9,14 @@ and validating updates on a target.  This should be subclassed to handle
 various types of target.  Types of targets include VM's, real devices, etc.
 """
 
+from __future__ import print_function
+
 import inspect
 import os
 
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
 from chromite.lib import dev_server_wrapper
-from chromite.lib import path_util
 from crostestutils.au_test_harness import update_exception
 
 
@@ -41,6 +42,16 @@ class AUWorker(object):
       self.verify_suite = 'suite:%s' % (options.verify_suite_name or 'smoke')
     self.ssh_private_key = options.ssh_private_key
 
+    # Attributes to be initialized in Initialize.
+    self._ssh_port = None
+    self._kvm_pid_file = None
+
+    # Initialize test results directory.
+    self.test_name = None
+    self.all_results_directory = None
+    self.fail_results_directory = None
+    self.results_count = 0
+
   def CleanUp(self):
     """Called at the end of every test."""
 
@@ -52,8 +63,10 @@ class AUWorker(object):
     else:
       msg = 'Performing a full update to %s' % update_target
 
-    if from_vm: msg += ' in a VM'
-    if proxy: msg += ' using a proxy on port ' + str(proxy)
+    if from_vm:
+      msg += ' in a VM'
+    if proxy:
+      msg += ' using a proxy on port ' + str(proxy)
     return msg
 
   def PrepareBase(self, image_path, signed_base):
@@ -74,10 +87,7 @@ class AUWorker(object):
     """Implementation of an actual update.
 
     Subclasses must override this method with the correct update procedure for
-    the class.
-
-    Args:
-      See PerformUpdate for description of args.
+    the class. See PerformUpdate for args.
     """
 
   def UpdateUsingPayload(self, update_path, stateful_change='old',
@@ -88,11 +98,11 @@ class AUWorker(object):
     the class.
 
     Args:
-      update_path:  Path to the image to update with. This directory should
-        contain both update.gz, and stateful.image.gz
+      update_path: Path to the image to update with. This directory should
+          contain both update.gz, and stateful.image.gz
       stateful_change: How to perform the stateful update.
-      proxy_port:  Port to have the client connect to. For use with
-        CrosTestProxy.
+      proxy_port: Port to have the client connect to. For use with
+          CrosTestProxy.
     """
 
   def VerifyImage(self, unittest, percent_required_to_pass=100, test=''):
@@ -102,11 +112,11 @@ class AUWorker(object):
     override this method with the correct update procedure for the class.
 
     Args:
-      unittest: pointer to a unittest to fail if we cannot verify the image.
-      percent_required_to_pass:  percentage required to pass.  This should be
-        fall between 0-100.
-      test: test that will be used to verify the image. If omitted or equal to
-        the empty string the code will use self.verify_suite.
+      unittest: Pointer to a unittest to fail if we cannot verify the image.
+      percent_required_to_pass: Percentage required to pass.  This should be
+          fall between 0-100.
+      test: Test that will be used to verify the image. If omitted or equal to
+          the empty string the code will use self.verify_suite.
 
     Returns:
       Returns the percent that passed.
@@ -122,20 +132,21 @@ class AUWorker(object):
     instead.
 
     Args:
-      image_path:  Path to the image to update with.  This image must be a test
-        image.
-      src_image_path:  Optional.  If set, perform a delta update using the
-        image specified by the path as the source image.
+      image_path: Path to the image to update with.  This image must be a test
+          image.
+      src_image_path: Optional.  If set, perform a delta update using the
+          image specified by the path as the source image.
       stateful_change: How to modify the stateful partition.  Values are:
-          'old':  Don't modify stateful partition.  Just update normally.
-          'clean':  Uses clobber-state to wipe the stateful partition with the
-            exception of code needed for ssh.
-      proxy_port:  Port to have the client connect to. For use with
-        CrosTestProxy.
+          'old': Don't modify stateful partition.  Just update normally.
+          'clean': Uses clobber-state to wipe the stateful partition with the
+              exception of code needed for ssh.
+      proxy_port: Port to have the client connect to. For use with
+          CrosTestProxy.
       payload_signing_key: Path to the private key to use to sign payloads.
     Raises an update_exception.UpdateException if _UpdateImage returns an error.
     """
-    if not self.use_delta_updates: src_image_path = ''
+    if not self.use_delta_updates:
+      src_image_path = ''
     key_to_use = payload_signing_key
 
     self.UpdateImage(image_path, src_image_path, stateful_change, proxy_port,
@@ -184,11 +195,16 @@ class AUWorker(object):
     Modifies cmd in places by appending appropriate items given args.
 
     Args:
-      See PerformUpdate for description of args.
+      cmd: See PerformUpdate.
+      image_path: See PerformUpdate.
+      src_image_path: See PerformUpdate.
+      proxy_port: See PerformUpdate.
+      payload_signing_key: See PerformUpdate.
       for_vm: Additional optional argument to say that the payload is intended
-        for vm usage (so we don't patch the kernel).
+          for vm usage (so we don't patch the kernel).
     """
-    if proxy_port: cmd.append('--proxy_port=%s' % proxy_port)
+    if proxy_port:
+      cmd.append('--proxy_port=%s' % proxy_port)
     update_id = dev_server_wrapper.GenerateUpdateId(
         image_path, src_image_path, payload_signing_key,
         for_vm=for_vm)
@@ -204,11 +220,12 @@ class AUWorker(object):
   def RunUpdateCmd(self, cmd, log_directory=None):
     """Runs the given update cmd given verbose options.
 
-    Raises an update_exception.UpdateException if the update fails.
-
     Args:
-      cmd:  The shell cmd to run.
-      log_directory:  Where to store the logs for this cmd.
+      cmd: The shell cmd to run.
+      log_directory: Where to store the logs for this cmd.
+
+    Raises:
+      update_exception.UpdateException: If the update fails.
     """
     kwds = dict(print_cmd=False, combine_stdout_stderr=True, error_code_ok=True)
     if not self.verbose:
@@ -227,7 +244,8 @@ class AUWorker(object):
       unittest: the unittest object running this test.
       output: stdout from a test run.
       percent_required_to_pass: percentage required to pass.  This should be
-        fall between 0-100.
+          fall between 0-100.
+
     Returns:
       percent that passed.
     """
@@ -235,7 +253,7 @@ class AUWorker(object):
     self.TestInfo('Percent passed: %d vs. Percent required: %d' % (
         percent_passed, percent_required_to_pass))
     if percent_passed < percent_required_to_pass:
-      print output
+      print(output)
       unittest.fail('%d percent of tests are required to pass' %
                     percent_required_to_pass)
 
@@ -250,7 +268,7 @@ class AUWorker(object):
     Each test needs to specify a unique ssh port.
 
     Args:
-      port:  Unique port for ssh access.
+      port: Unique port for ssh access.
     """
     # Initialize port vars.
     self._ssh_port = port
@@ -277,6 +295,7 @@ class AUWorker(object):
 
     Args:
       label: The label used to describe this test phase.
+
     Returns:
       Returns a path for the results directory to use for this label.
     """
@@ -295,6 +314,7 @@ class AUWorker(object):
 
     Args:
       output: Output string for generate_test_report.py.
+
     Returns:
       The percentage of tests that passed.
     """

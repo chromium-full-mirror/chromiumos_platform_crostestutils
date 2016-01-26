@@ -4,6 +4,8 @@
 
 """Module containing class that implements an au_worker for a test device."""
 
+from __future__ import print_function
+
 import constants
 from chromite.lib import cros_build_lib
 from chromite.lib import path_util
@@ -47,13 +49,15 @@ class RealAUWorker(au_worker.AUWorker):
            stateful_change_flag,
            '--verify',
           ]
-    if proxy_port: cmd.append('--proxy_port=%s' % proxy_port)
+    if proxy_port:
+      cmd.append('--proxy_port=%s' % proxy_port)
     self.RunUpdateCmd(cmd)
 
   def VerifyImage(self, unittest, percent_required_to_pass=100, test=''):
     """Verifies an image using test_that with verification suite."""
     test_directory, _ = self.GetNextResultsPath('autotest_tests')
-    if not test: test = self.verify_suite
+    if not test:
+      test = self.verify_suite
 
     cmd = ['test_that', '--no-quickmerge', '--results_dir=%s' % test_directory,
            self.remote, test]
@@ -67,4 +71,3 @@ class RealAUWorker(au_worker.AUWorker):
 
     return self.AssertEnoughTestsPassed(unittest, result.output,
                                         percent_required_to_pass)
-

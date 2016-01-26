@@ -4,6 +4,8 @@
 
 """Module containing implementation of an au_worker for virtual machines."""
 
+from __future__ import print_function
+
 import os
 import shutil
 import tempfile
@@ -23,7 +25,8 @@ class VMAUWorker(au_worker.AUWorker):
     """Processes vm-specific options."""
     super(VMAUWorker, self).__init__(options, test_results_root)
     self.graphics_flag = ''
-    if options.no_graphics: self.graphics_flag = '--no_graphics'
+    if options.no_graphics:
+      self.graphics_flag = '--no_graphics'
     if not self.board:
       cros_build_lib.Die('Need board to convert base image to vm.')
     self.whitelist_chrome_crashes = options.whitelist_chrome_crashes
@@ -125,7 +128,8 @@ class VMAUWorker(au_worker.AUWorker):
            '--ssh_port=%s' % self._ssh_port,
            stateful_change_flag,
           ]
-    if proxy_port: cmd.append('--proxy_port=%s' % proxy_port)
+    if proxy_port:
+      cmd.append('--proxy_port=%s' % proxy_port)
     self.TestInfo(self.GetUpdateMessage(update_path, None, True, proxy_port))
     try:
       self.RunUpdateCmd(cmd, log_directory)
@@ -137,10 +141,8 @@ class VMAUWorker(au_worker.AUWorker):
                         payload_signing_key, for_vm=False):
     """Appends common args to an update cmd defined by an array.
 
-    Calls super function with for_vm set to True.
-
-    Args:
-      See AppendUpdateFlags for description of args.
+    Calls super function with for_vm set to True. See base class for
+    descriptions for arguments.
     """
     super(VMAUWorker, self).AppendUpdateFlags(
         cmd, image_path, src_image_path, proxy_port, payload_signing_key,
@@ -150,7 +152,7 @@ class VMAUWorker(au_worker.AUWorker):
     # VMAUWorker disregards |unittest| and |percent_required_to_pass|.
     return self._VerifyImage(test)
 
-  # pylint: disable-msg=W0221
+  # pylint: disable=W0221
   def _VerifyImage(self, test=''):
     """Runs vm smoke suite or any single test to verify image.
 
@@ -160,7 +162,8 @@ class VMAUWorker(au_worker.AUWorker):
     (_, _, log_directory_in_chroot) = log_directory.rpartition('chroot')
     # image_to_live already verifies lsb-release matching.  This is just
     # for additional steps.
-    if not test: test = self.verify_suite
+    if not test:
+      test = self.verify_suite
 
     command = ['./bin/cros_run_vm_test',
                '--board=%s' % self.board,
@@ -172,7 +175,8 @@ class VMAUWorker(au_worker.AUWorker):
                '--verbose=0',
                test,
               ]
-    if self.graphics_flag: command.append(self.graphics_flag)
+    if self.graphics_flag:
+      command.append(self.graphics_flag)
     if self.whitelist_chrome_crashes:
       command.append('--whitelist_chrome_crashes')
     if self.ssh_private_key is not None:
@@ -186,7 +190,7 @@ class VMAUWorker(au_worker.AUWorker):
 
     # If the command failed or printed warnings, print the output.
     if result.returncode != 0 or '@@@STEP_WARNINGS@@@' in result.output:
-      print result.output
+      print(result.output)
       self._HandleFail(log_directory, fail_directory)
 
     return result.returncode == 0

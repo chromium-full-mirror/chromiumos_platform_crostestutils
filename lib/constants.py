@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Module containing contants to be used across crostestutils."""
+
+from __future__ import print_function
+
 import os
 
 _TEST_LIB_PATH = os.path.realpath(__file__)

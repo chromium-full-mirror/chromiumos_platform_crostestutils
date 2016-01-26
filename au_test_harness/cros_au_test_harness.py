@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -12,8 +12,10 @@
   being run during the update process.
 """
 
+from __future__ import print_function
+
+import argparse
 import functools
-import optparse
 import os
 import pickle
 import sys
@@ -91,17 +93,17 @@ def _ReadUpdateCache(dut_type, target_image):
   return None
 
 
-def _PrepareTestSuite(options):
-  """Returns a prepared test suite given by the options and test class."""
-  au_test.AUTest.ProcessOptions(options)
+def _PrepareTestSuite(opts):
+  """Returns a prepared test suite given by the opts and test class."""
+  au_test.AUTest.ProcessOptions(opts)
   test_loader = unittest.TestLoader()
-  test_loader.testMethodPrefix = options.test_prefix
+  test_loader.testMethodPrefix = opts.test_prefix
   return test_loader.loadTestsFromTestCase(au_test.AUTest)
 
 
-def _RunTestsInParallel(options):
-  """Runs the tests given by the options in parallel."""
-  test_suite = _PrepareTestSuite(options)
+def _RunTestsInParallel(opts):
+  """Runs the tests given by the opts in parallel."""
+  test_suite = _PrepareTestSuite(opts)
   steps = []
   for test in test_suite:
     test_name = test.id()
@@ -110,113 +112,113 @@ def _RunTestsInParallel(options):
 
   logging.info('Running tests in test suite in parallel.')
   try:
-    parallel.RunParallelSteps(steps, max_parallel=options.jobs)
+    parallel.RunParallelSteps(steps, max_parallel=opts.jobs)
   except parallel.BackgroundFailure as ex:
     cros_build_lib.Die(ex)
 
 
-def CheckOptions(parser, options, leftover_args):
-  """Assert given options are valid.
+def CheckOpts(parser, opts):
+  """Assert given opts are valid.
 
   Args:
-    parser: Parser used to parse options.
-    options: Parsed options.
-    leftover_args: Args left after parsing.
+    parser: Parser used to parse opts.
+    opts: Parsed opts.
   """
 
-  if leftover_args: parser.error('Found unsupported flags ' + leftover_args)
-  if not options.type in ['real', 'vm', 'gce']:
+  if not opts.type in ['real', 'vm', 'gce']:
     parser.error('Failed to specify valid test type.')
 
   def _IsValidImage(image):
-    """Asserts that |image_path| is a valid image file for |options.type|."""
+    """Asserts that |image_path| is a valid image file for |opts.type|."""
     return (image is not None) and os.path.isfile(image)
 
-  if not _IsValidImage(options.target_image):
+  if not _IsValidImage(opts.target_image):
     parser.error('Testing requires a valid target image.\n'
                  'Given: type=%s, target_image=%s.' %
-                 (options.type, options.target_image))
+                 (opts.type, opts.target_image))
 
-  if not options.base_image:
+  if not opts.base_image:
     logging.info('No base image supplied.  Using target as base image.')
-    options.base_image = options.target_image
+    opts.base_image = opts.target_image
 
-  if not _IsValidImage(options.base_image):
+  if not _IsValidImage(opts.base_image):
     parser.error('Testing requires a valid base image.\n'
                  'Given: type=%s, base_image=%s.' %
-                 (options.type, options.base_image))
+                 (opts.type, opts.base_image))
 
-  if (options.payload_signing_key and not
-      os.path.isfile(options.payload_signing_key)):
+  if (opts.payload_signing_key and not
+      os.path.isfile(opts.payload_signing_key)):
     parser.error('Testing requires a valid path to the private key.')
 
-  if options.ssh_private_key and not os.path.isfile(options.ssh_private_key):
+  if opts.ssh_private_key and not os.path.isfile(opts.ssh_private_key):
     parser.error('Testing requires a valid path to the ssh private key.')
 
-  if options.test_results_root:
-    if not 'chroot/tmp' in options.test_results_root:
+  if opts.test_results_root:
+    if not 'chroot/tmp' in opts.test_results_root:
       parser.error('Must specify a test results root inside tmp in a chroot.')
 
-    if not os.path.exists(options.test_results_root):
-      os.makedirs(options.test_results_root)
+    if not os.path.exists(opts.test_results_root):
+      os.makedirs(opts.test_results_root)
 
   else:
     chroot_tmp = os.path.join(constants.SOURCE_ROOT, 'chroot', 'tmp')
-    options.test_results_root = tempfile.mkdtemp(
+    opts.test_results_root = tempfile.mkdtemp(
         prefix='au_test_harness', dir=chroot_tmp)
 
 
 def main():
   test_helper.SetupCommonLoggingFormat()
-  parser = optparse.OptionParser()
-  parser.add_option('-b', '--base_image',
-                    help='path to the base image.')
-  parser.add_option('-r', '--board',
-                    help='board for the images.')
-  parser.add_option('--no_delta', action='store_false', default=True,
-                    dest='delta',
-                    help='Disable using delta updates.')
-  parser.add_option('--no_graphics', action='store_true',
-                    help='Disable graphics for the vm test.')
-  parser.add_option('-j', '--jobs', default=test_helper.CalculateDefaultJobs(),
-                    type=int, help='Number of simultaneous jobs')
-  parser.add_option('--payload_signing_key', default=None,
-                    help='Path to the private key used to sign payloads with.')
-  parser.add_option('-q', '--quick_test', default=False, action='store_true',
-                    help='Use a basic test to verify image.')
-  parser.add_option('-m', '--remote',
-                    help='Remote address for real test.')
-  parser.add_option('-t', '--target_image',
-                    help='path to the target image.')
-  parser.add_option('--test_results_root', default=None,
-                    help='Root directory to store test results.  Should '
-                    'be defined relative to chroot root.')
-  parser.add_option('--test_prefix', default='test',
-                    help='Only runs tests with specific prefix i.e. '
-                    'testFullUpdateWipeStateful.')
-  parser.add_option('-p', '--type', default='vm',
-                    help='type of test to run: [vm, real, gce]. Default: vm.')
-  parser.add_option('--verbose', default=True, action='store_true',
-                    help='Print out rather than capture output as much as '
-                    'possible.')
-  parser.add_option('--whitelist_chrome_crashes', default=False,
-                    dest='whitelist_chrome_crashes', action='store_true',
-                    help='Treat Chrome crashes as non-fatal.')
-  parser.add_option('--verify_suite_name', default=None,
-                    help='Specify the verify suite to run.')
-  parser.add_option('--parallel', default=False, dest='parallel',
-                    action='store_true',
-                    help='Run multiple test stages in parallel (applies only '
-                         'to vm tests). Default: False')
-  parser.add_option('--ssh_private_key', default=None,
-                    help='Path to the private key to use to ssh into the image '
-                    'as the root user.')
-  (options, leftover_args) = parser.parse_args()
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-b', '--base_image',
+                      help='path to the base image.')
+  parser.add_argument('-r', '--board',
+                      help='board for the images.')
+  parser.add_argument('--no_delta', action='store_false', default=True,
+                      dest='delta',
+                      help='Disable using delta updates.')
+  parser.add_argument('--no_graphics', action='store_true',
+                      help='Disable graphics for the vm test.')
+  parser.add_argument('-j', '--jobs',
+                      default=test_helper.CalculateDefaultJobs(), type=int,
+                      help='Number of simultaneous jobs')
+  parser.add_argument('--payload_signing_key', default=None,
+                      help='Path to the private key used to sign payloads '
+                      'with.')
+  parser.add_argument('-q', '--quick_test', default=False, action='store_true',
+                      help='Use a basic test to verify image.')
+  parser.add_argument('-m', '--remote',
+                      help='Remote address for real test.')
+  parser.add_argument('-t', '--target_image',
+                      help='path to the target image.')
+  parser.add_argument('--test_results_root', default=None,
+                      help='Root directory to store test results.  Should '
+                      'be defined relative to chroot root.')
+  parser.add_argument('--test_prefix', default='test',
+                      help='Only runs tests with specific prefix i.e. '
+                      'testFullUpdateWipeStateful.')
+  parser.add_argument('-p', '--type', default='vm',
+                      help='type of test to run: [vm, real, gce]. Default: vm.')
+  parser.add_argument('--verbose', default=True, action='store_true',
+                      help='Print out rather than capture output as much as '
+                      'possible.')
+  parser.add_argument('--whitelist_chrome_crashes', default=False,
+                      dest='whitelist_chrome_crashes', action='store_true',
+                      help='Treat Chrome crashes as non-fatal.')
+  parser.add_argument('--verify_suite_name', default=None,
+                      help='Specify the verify suite to run.')
+  parser.add_argument('--parallel', default=False, dest='parallel',
+                      action='store_true',
+                      help='Run multiple test stages in parallel (applies only '
+                      'to vm tests). Default: False')
+  parser.add_argument('--ssh_private_key', default=None,
+                      help='Path to the private key to use to ssh into the '
+                      'image as the root user.')
+  opts = parser.parse_args()
 
-  CheckOptions(parser, options, leftover_args)
+  CheckOpts(parser, opts)
 
   # Generate cache of updates to use during test harness.
-  update_cache = _ReadUpdateCache(options.type, options.target_image)
+  update_cache = _ReadUpdateCache(opts.type, opts.target_image)
   if not update_cache:
     msg = ('No update cache found. Update testing will not work.  Run '
            ' cros_generate_update_payloads if this was not intended.')
@@ -236,15 +238,15 @@ def main():
       if update_cache:
         my_server = dev_server_wrapper.DevServerWrapper(
             port=dev_server_wrapper.DEFAULT_PORT,
-            log_dir=options.test_results_root)
+            log_dir=opts.test_results_root)
         my_server.Start()
 
-      if options.type == 'vm' or options.type == 'gce' and options.parallel:
-        _RunTestsInParallel(options)
+      if opts.type == 'vm' or opts.type == 'gce' and opts.parallel:
+        _RunTestsInParallel(opts)
       else:
         # TODO(sosa) - Take in a machine pool for a real test.
         # Can't run in parallel with only one remote device.
-        test_suite = _PrepareTestSuite(options)
+        test_suite = _PrepareTestSuite(opts)
         test_result = unittest.TextTestRunner().run(test_suite)
         if not test_result.wasSuccessful():
           cros_build_lib.Die('Test harness failed.')

@@ -1,10 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 #
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Test module containing unittests for CTest."""
+
+from __future__ import print_function
 
 import mox
 import os
@@ -37,12 +39,15 @@ class CTestTest(mox.MoxTestBase):
 
     # TODO(sosa): Can we create mock objects but call a real method in an easier
     # way?
-    ctest.CTest.__init__()
+    ctest.CTest.__init__(None)
+    # pylint: disable=no-value-for-parameter
+    # For some reason pylint is not happy with the way mox mocks out functions.
     image_extractor.ImageExtractor.GetLatestImage(
         'target_version').AndReturn(None)
+    # pylint: enable=no-value-for-parameter
 
     self.mox.ReplayAll()
-    ctester = ctest.CTest() # Calls mocked out __init__.
+    ctester = ctest.CTest(None) # Calls mocked out __init__.
     ctester.target = 'some_image/target_version/file.bin'
     ctester.base = None
     ctester.archive_dir = self.ARCHIVE_DIR
@@ -64,14 +69,16 @@ class CTestTest(mox.MoxTestBase):
     latest_base_path = os.path.join(
         '/some/fake/path', image_extractor.ImageExtractor.IMAGE_TO_EXTRACT)
 
-    ctest.CTest.__init__()
+    ctest.CTest.__init__(None)
+    # pylint: disable=no-value-for-parameter
     image_extractor.ImageExtractor.GetLatestImage('target_version').AndReturn(
         latest_base_dir)
     image_extractor.ImageExtractor.UnzipImage(latest_base_dir).AndReturn(
         latest_base_path)
+    # pylint: enable=no-value-for-parameter
 
     self.mox.ReplayAll()
-    ctester = ctest.CTest() # Calls mocked out __init__.
+    ctester = ctest.CTest(None) # Calls mocked out __init__.
     ctester.target = 'some_image/target_version/file.bin'
     ctester.base = None
     ctester.archive_dir = self.ARCHIVE_DIR
@@ -94,15 +101,17 @@ class CTestTest(mox.MoxTestBase):
 
     fake_crosutils = os.path.join(self.FAKE_ROOT, 'src', 'scripts')
 
-    ctest.CTest.__init__()
+    ctest.CTest.__init__(None)
     cros_build_lib.RunCommand(
         mox.In('./get_latest_image.sh'), cwd=fake_crosutils, print_cmd=False,
         redirect_stdout=True).AndReturn(fake_result)
+    # pylint: disable=no-value-for-parameter
     image_extractor.ImageExtractor.GetLatestImage('latest_version').AndReturn(
         None)
+    # pylint: enable=no-value-for-parameter
 
     self.mox.ReplayAll()
-    ctester = ctest.CTest() # Calls mocked out __init__.
+    ctester = ctest.CTest(None) # Calls mocked out __init__.
     ctester.target = None
     ctester.base = None
     ctester.archive_dir = self.ARCHIVE_DIR
