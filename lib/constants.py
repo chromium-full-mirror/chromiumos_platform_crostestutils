@@ -28,5 +28,6 @@ GCE_JSON_KEY = '/creds/service_accounts/service-account-cros-autotest-bots.json'
 GCS_BUCKET = 'chromeos-test-gce-tarballs'
 
 TRUSTED_BOARDS = [
-    'lakitu'
+    'lakitu',
+    'lakitu_next',
 ]
