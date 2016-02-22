@@ -9,7 +9,7 @@
 #
 # Latest test run status for a build is fetched from the builder, read from
 # the 'stdio' text file located at:
-#   http://BUILDER_HOST/p/BUILDER_PROJECT/builders/BUILDER_NAME/
+#   http://BUILDER_HOST/i/BUILDER_PROJECT/builders/BUILDER_NAME/
 #   builds/BUILD_NUMBER/steps/TEST_TYPE/logs/stdio/text
 #
 
@@ -83,12 +83,12 @@ def _GetBuildsList(build_dict):
   """
   # Generate percent-encoded builder url.
   builder_url = (
-      'https://%s/p/%s/builders/%s' %
+      'https://%s/i/%s/builders/%s' %
       (urllib2.quote(build_dict['builder_host']),
        urllib2.quote(build_dict['builder_proj']),
        urllib2.quote(build_dict['builder_name'])))
   builder_json_url = (
-      'https://%s/p/%s/json/builders/%s' %
+      'https://%s/i/%s/json/builders/%s' %
       (urllib2.quote(build_dict['builder_host']),
        urllib2.quote(build_dict['builder_proj']),
        urllib2.quote(build_dict['builder_name'])))
@@ -96,9 +96,9 @@ def _GetBuildsList(build_dict):
   # Fetch builder status file from builder url.
   print('\nFetching builder status file from: %s' % builder_url)
   try:
-    response = urllib2.urlopen(builder_json_url)
-    builder_status_file = response.read()
-    response.close()
+    builder_status_file = urllib2.urlopen(builder_json_url)
+    builder_status = builder_status_file.read()
+    builder_status_file.close()
   except urllib2.HTTPError as err:
     print('HTTP error: %s' % err)
     sys.exit(2)
@@ -107,7 +107,7 @@ def _GetBuildsList(build_dict):
     sys.exit(2)
 
   # Convert json builder status file to dictionary.
-  builder_status_dict = json.loads(builder_status_file)
+  builder_status_dict = json.loads(builder_status)
   build_list = builder_status_dict['cachedBuilds']
   print('\nList of avaiable builds: %s\n' % build_list)
   return build_list
@@ -254,13 +254,13 @@ def _GetBuildTestStatus(build_dict):
   """
   # Generate percent-encoded build test status url.
   build_url = (
-      'https://%s/p/%s/builders/%s/builds/%s' %
+      'https://%s/i/%s/builders/%s/builds/%s' %
       (urllib2.quote(build_dict['builder_host']),
        urllib2.quote(build_dict['builder_proj']),
        urllib2.quote(build_dict['builder_name']),
        build_dict['build_num']))
   build_json_url = (
-      'https://%s/p/%s/json/builders/%s/builds?select=%s/steps/%s/' %
+      'https://%s/i/%s/json/builders/%s/builds?select=%s/steps/%s/' %
       (urllib2.quote(build_dict['builder_host']),
        urllib2.quote(build_dict['builder_proj']),
        urllib2.quote(build_dict['builder_name']),
@@ -288,13 +288,13 @@ def _GetBuildStatus(build_dict, build_num=None):
 
   # Generate percent-encoded build status url.
   build_url = (
-      'https://%s/p/%s/builders/%s/builds/%s' %
+      'https://%s/i/%s/builders/%s/builds/%s' %
       (urllib2.quote(build_dict['builder_host']),
        urllib2.quote(build_dict['builder_proj']),
        urllib2.quote(build_dict['builder_name']),
        build_num))
   build_url_json = (
-      'https://%s/p/%s/json/builders/%s/builds/%s' %
+      'https://%s/i/%s/json/builders/%s/builds/%s' %
       (urllib2.quote(build_dict['builder_host']),
        urllib2.quote(build_dict['builder_proj']),
        urllib2.quote(build_dict['builder_name']),
@@ -315,12 +315,12 @@ def _FetchStatusFromUrl(build_dict, build_url_json):
   """
   # Fetch json status file from build url.
   hosted_url = _SetUrlHost(build_url_json, build_dict['builder_host'])
-  url = urllib2.urlopen(hosted_url)
-  status_file = url.read()
-  url.close()
+  status_file = urllib2.urlopen(hosted_url)
+  status = status_file.read()
+  status_file.close()
 
-  # Convert json status file to status dictionary and return.
-  return json.loads(status_file)
+  # Convert json status to status dictionary and return.
+  return json.loads(status)
 
 
 def _GetBuildProperty(build_properties, property_name):
