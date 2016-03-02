@@ -100,8 +100,8 @@ class GCEAUWorker(au_worker.AUWorker):
   """
   _GS_PATH_COMMON_PREFIX = 'gs://'
   _GS_URL_COMMON_PREFIX = 'https://storage.googleapis.com/'
-  _IMAGE_PREFIX = 'test-image-'
-  _INSTANCE_PREFIX = 'test-instance-'
+  _IMAGE_PREFIX = 'test-'
+  _INSTANCE_PREFIX = 'test-'
   _TEST_REPORT_FILENAME = 'test_report.log'
 
   def __init__(self, options, test_results_root,
