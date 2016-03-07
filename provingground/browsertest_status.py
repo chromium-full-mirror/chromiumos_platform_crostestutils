@@ -52,7 +52,8 @@ def _GetUserSpecifiedTests(tests_file):
 
   File must be a text file, formatted with one line per test. Leading and
   trailing spaces and blanklines are stripped from the test list. If a line
-  still contains a space return only the first word (to remove comments).
+  still contains a space, return only the first word (to remove comments). If
+  the first character on line is '#', then ignore line (to remove comments).
 
   Args:
     tests_file: Path and name of tests file.
@@ -63,7 +64,7 @@ def _GetUserSpecifiedTests(tests_file):
   print('\nReading user-specified tests from: %s' % tests_file)
   content = open(tests_file, 'r').read().strip()
   user_tests = [line.strip().split()[0] for line in content.splitlines()
-                if line.strip()]
+                if line.strip() and line.strip()[0][0] is not '#']
   if not user_tests:
     print('Error: tests file is empty.')
     sys.exit(2)
