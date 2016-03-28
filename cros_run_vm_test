@@ -56,6 +56,10 @@ if [ -z "${FLAGS_test_case}" ] && [ -z "${FLAGS_ARGV}" ]; then
   die "You must specify a test case."
 fi
 
+if [ -z "${FLAGS_results_dir_root}" ]; then
+  die "You must specify a directory for results (--results_dir_root)."
+fi
+
 test_args=( )
 tests_lists=( )
 if [[ ${FLAGS_use_emerged} -eq ${FLAGS_TRUE} ]]; then
