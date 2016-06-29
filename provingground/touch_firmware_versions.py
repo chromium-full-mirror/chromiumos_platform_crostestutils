@@ -48,7 +48,7 @@ def find_value_of_variable(var, text):
   Returns:
     A string of the value or '' if not found.
   """
-  result = re.findall(r'^%s=["\'](.*)["\']' % var, text, re.MULTILINE)
+  result = re.findall(r'^%s=["\']?(.*?)["\']?\n' % var, text, re.MULTILINE)
   if not result:
     return ''
   return result[-1]
@@ -116,7 +116,7 @@ def find_values_from_line(device, line, text):
       fw_file = search.group(1)
 
   # Exceptions for unfortunately formatted files.
-  if device == 'lulu' and fw_file == '':
+  if (device == 'lulu' or device == 'umaro') and fw_file == '':
     bad_fmt = 'SYNA_TP_SYM_LINK_PATH=}'
     good_fmt = bad_fmt.replace('=', '')
     new_line = list(line)
