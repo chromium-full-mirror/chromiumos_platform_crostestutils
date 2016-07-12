@@ -9,6 +9,7 @@
 . $(dirname "$(readlink -f "$0")")/outside_chroot_common.sh || exit 1
 . "${SCRIPT_ROOT}/common.sh" || exit 1
 . "${SCRIPT_ROOT}/lib/cros_vm_lib.sh" || die "Unable to load cros_vm_lib.sh"
+. "${SCRIPT_ROOT}/remote_access.sh" || die "Unable to load remote_access.sh"
 
 DEFINE_string board "$DEFAULT_BOARD" \
   "The board for which you built autotest." b
@@ -56,9 +57,14 @@ if [ "${FLAGS_quick_test}" -eq "${FLAGS_TRUE}" ]; then
   QUICK_TEST_FLAGS="--noupdate --noupdate_stateful"
 fi
 
+TMP=$(mktemp -d /tmp/cros_run_vm_update.XXXX)
+remote_access_init
+remote_sh "update_engine"
+
 "${SCRIPT_ROOT}/image_to_live.sh" \
   --remote=127.0.0.1 \
   --ssh_port=${FLAGS_ssh_port} \
+  --private_key=${FLAGS_ssh_private_key} \
   --stateful_update_flag=${FLAGS_stateful_update_flag} \
   --src_image="${FLAGS_src_image}" \
   --noupdate_hostkey \

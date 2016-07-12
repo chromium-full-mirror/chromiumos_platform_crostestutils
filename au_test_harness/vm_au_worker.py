@@ -100,8 +100,12 @@ class VMAUWorker(au_worker.AUWorker):
            '--persist',
            '--kvm_pid=%s' % self._kvm_pid_file,
            '--ssh_port=%s' % self._ssh_port,
+           '--remote=127.0.0.1',
            stateful_change_flag,
           ]
+    if self.ssh_private_key is not None:
+      cmd.append('--ssh_private_key=%s' % self.ssh_private_key)
+      cmd.append('--private_key=%s' % self.ssh_private_key)
     self.AppendUpdateFlags(cmd, image_path, src_image_path, proxy_port,
                            payload_signing_key)
     self.TestInfo(self.GetUpdateMessage(image_path, src_image_path, True,
@@ -126,8 +130,12 @@ class VMAUWorker(au_worker.AUWorker):
            '--persist',
            '--kvm_pid=%s' % self._kvm_pid_file,
            '--ssh_port=%s' % self._ssh_port,
+           '--remote=127.0.0.1',
            stateful_change_flag,
           ]
+    if self.ssh_private_key is not None:
+      cmd.append('--ssh_private_key=%s' % self.ssh_private_key)
+      cmd.append('--private_key=%s' % self.ssh_private_key)
     if proxy_port:
       cmd.append('--proxy_port=%s' % proxy_port)
     self.TestInfo(self.GetUpdateMessage(update_path, None, True, proxy_port))
