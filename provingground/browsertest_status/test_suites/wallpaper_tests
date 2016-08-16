@@ -1,0 +1,3 @@
+WallpaperManagerPolicyTest.SetResetClear
+WallpaperManagerPolicyTest.PersistOverLogout
+# WallpaperManagerPolicyTest.WallpaperOnLoginScreen # Disabled per crbug.com/385648
