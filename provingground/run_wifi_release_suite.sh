@@ -56,7 +56,7 @@ list_10=(veyron_speedy veyron_minnie veyron_mickey)
 list_11=(veyron_mighty veyron_jaq veyron_jerry)
 
 # Intel Stonepeak2 on kernel 3.18
-list_12=(cyan celes glados ultima reks chell lars terra sentry edgar banon)
+list_12=(cyan celes glados ultima reks chell lars terra sentry edgar banon umaro)
 
 # Marvell 8897 on kernel 3.18
 list_13=(elm)
