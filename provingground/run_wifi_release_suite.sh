@@ -56,13 +56,18 @@ list_10=(veyron_speedy veyron_minnie veyron_mickey)
 list_11=(veyron_mighty veyron_jaq veyron_jerry)
 
 # Intel Stonepeak2 on kernel 3.18
-list_12=(cyan celes glados ultima reks chell lars terra sentry edgar banon umaro)
+list_12=(cyan celes glados ultima reks chell lars terra sentry edgar banon umaro
+         kefka cave sabin asuka)
 
 # Marvell 8897 on kernel 3.18
 list_13=(elm)
 
+# Marvell 8897 on kernel 4.4.14
+list_14=(kevin)
+
+
 DESIRED_BOARDS=(list_1 list_2 list_3 list_4 list_5 list_6 list_7 list_8 list_9
-                list_10 list_11 list_12 list_13)
+                list_10 list_11 list_12 list_13 list_14)
 
 # POOLS format: POOLS[<pool name>]=<suite name>
 declare -A POOLS
