@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -63,7 +63,7 @@ function start() {
   mkdir -p "$SOCKET_DIR"
 
   if [[ -z "$1" ]] || [[ "$1" == "all" ]]; then
-    for i in {1..7}; do
+    for i in $(eval echo {1..${#MOBLABS[@]}}); do
       mobs+=("moblab$i")
     done
   else
@@ -90,9 +90,19 @@ function start() {
     echo "Checking tunnels for ${mobs[*]}"
     for moblab in "${mobs[@]}"; do
       index=${moblab: -1}
+      echo "$moblab UI Tunnel http://localhost:$BASE_PORT$index to ${MOBLABS[$moblab]}"
       check_tunnel "$BASE_PORT$index" 80 "${MOBLABS[$moblab]}"
+      echo "$moblab Admin Tunnel http://localhost:$BASE_ADMIN_PORT$index to ${MOBLABS[$moblab]}"
       check_tunnel "$BASE_ADMIN_PORT$index" 9991 "${MOBLABS[$moblab]}"
+      echo
     done
+    if [[ "${STATUS}" -eq 2 ]]; then
+      # Pick only the first host in case user enter more then one.
+      set -- $mobs
+      m=$1
+      echo Connecting to $m with IP ${MOBLABS[$m]}
+      ssh root@${MOBLABS[$m]}
+    fi
   else
     usage
   fi
@@ -107,12 +117,14 @@ function usage() {
   -c Close active or specified tunnels.
   -h Print this.
   -o Open all tunnels or only those specified.
-  -s Checks the status of each active tunnel."
+  -s Checks the status of each active tunnel.
+  -u Connect to moblab via ssh.
+  "
 }
 
 OPTIND=1
 
-while getopts "achos" opt; do
+while getopts "achosu" opt; do
   case "$opt" in
     a)
       MONITOR_PORT=1
@@ -130,6 +142,9 @@ while getopts "achos" opt; do
     s)
       STATUS=1
       ;;
+    u)
+      STATUS=2
+      ;;
     esac
 done
 
@@ -138,7 +153,3 @@ shift $((OPTIND-1))
 [[ "$1" = "--" ]] && shift
 
 start "$@"
-
-
-
-
