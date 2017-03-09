@@ -95,7 +95,8 @@ do_ping() {
 # Restart all our ethernet devices and restart shill.
 # Return the remote IP address of the first established SSH connection
 find_ssh_client() {
-  netstat -lanp | awk '/tcp.*:22.*ESTABLISHED.*/ {split($5,a,":"); print a[1]}'
+  netstat -lanp | awk '/tcp.*:22 .*ESTABLISHED.*/ {split($5,a,":"); \
+                       if (a[1] != "127.0.0.1") print a[1]}'
 }
 
 # Try to find a connected SSH client (our autotest server) and ping it
