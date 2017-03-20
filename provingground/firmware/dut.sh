@@ -7,13 +7,14 @@
 # Usage: dut.sh DUT_IP
 #
 cat <<EOF | ssh root@$1
-echo -n "Type of hardware  : "
+echo -n "Board and Stage   : "
 dut_type=\$(grep '^CHROMEOS_RELEASE_BOARD=' /etc/lsb-release | cut -d= -f2)
-echo \$dut_type
-echo    'Device Stage      : {***Example: EVT, DVT, PVT...***}'
+echo "\$dut_type / {***Example: EVT, DVT, PVT...***}"
 
 echo -n "Chrome OS Version : "
-grep '^CHROMEOS_RELEASE_DESCRIPTION=' /etc/lsb-release | cut -d= -f2
+pat='^CHROMEOS_RELEASE_(CHROME_MILESTONE|DESCRIPTION)'
+echo M\$(egrep "\$pat" /etc/lsb-release | cut -d= -f2-)
+
 
 echo -n "BIOS VERSION      : "
 echo \$(crossystem ro_fwid) / \$(crossystem fwid)
