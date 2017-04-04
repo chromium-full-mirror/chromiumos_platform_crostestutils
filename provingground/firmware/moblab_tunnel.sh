@@ -7,14 +7,22 @@
 # Manage ssh tunnels to local mobalabs used for
 # firmware testing.
 
+MOBLAB1="${MOBLAB1:-100.107.195.210}"
+MOBLAB2="${MOBLAB2:-100.107.195.212}"
+MOBLAB3="${MOBLAB3:-100.107.195.220}"
+MOBLAB4="${MOBLAB4:-100.107.195.217}"
+MOBLAB5="${MOBLAB5:-100.107.195.219}"
+MOBLAB6="${MOBLAB6:-100.107.195.211}"
+MOBLAB7="${MOBLAB7:-100.107.195.209}"
+
 declare -A MOBLABS=(
-["moblab1"]="100.107.195.210"
-["moblab2"]="100.107.195.212"
-["moblab3"]="100.107.195.220"
-["moblab4"]="100.107.195.217"
-["moblab5"]="100.107.195.219"
-["moblab6"]="100.107.195.211"
-["moblab7"]="100.107.195.209")
+["moblab1"]=${MOBLAB1}
+["moblab2"]=${MOBLAB2}
+["moblab3"]=${MOBLAB3}
+["moblab4"]=${MOBLAB4}
+["moblab5"]=${MOBLAB5}
+["moblab6"]=${MOBLAB6}
+["moblab7"]=${MOBLAB7})
 
 BASE_PORT=908
 BASE_ADMIN_PORT=999
