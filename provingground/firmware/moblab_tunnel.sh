@@ -14,7 +14,7 @@ declare -A MOBLABS=(
 ["moblab4"]="100.107.195.217"
 ["moblab5"]="100.107.195.219"
 ["moblab6"]="100.107.195.211"
-["moblab7"]="100.107.195.216")
+["moblab7"]="100.107.195.209")
 
 BASE_PORT=908
 BASE_ADMIN_PORT=999
