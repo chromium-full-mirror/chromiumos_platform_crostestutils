@@ -109,7 +109,7 @@ function start() {
       set -- $mobs
       m=$1
       echo Connecting to $m with IP ${MOBLABS[$m]}
-      ssh root@${MOBLABS[$m]}
+      ssh moblab@${MOBLABS[$m]}
     fi
   else
     usage
