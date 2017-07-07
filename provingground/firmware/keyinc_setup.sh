@@ -97,15 +97,17 @@ EOF
   cros_sdk -- bash /tmp/prepbin.sh < /dev/null
   date
   )
-  log
-  log "Check the output:"
-  log "  $CHROMIUMOS_DIR/chroot/tmp/fm_and_key.out"
-  log "You can ignore the error near the end"
-  log "Rename testimage to $CHANNEL."
-  for i in  $CHROMIUMOS_DIR/chroot/tmp/key_increment_working_folder/payloads/*.signed
+  log "****************************"
+  log "Please check the output for error"
+  log "$CHROMIUMOS_DIR/chroot/tmp/fm_and_key.out"
+  log "****************************"
+  for i in $CHROMIUMOS_DIR/chroot/tmp/key_increment_working_folder/payloads/*.signed
   do
+    log "Renaming testimage $i to $CHANNEL"
     mv $i $(echo $i|sed 's/_testimage-/_'$CHANNEL'-/g')
   done
+  log "Resulting payloads:"
+  ls -l $CHROMIUMOS_DIR/chroot/tmp/key_increment_working_folder/payloads/*.signed
 }
 
 
