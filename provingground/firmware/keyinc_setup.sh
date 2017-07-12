@@ -414,7 +414,7 @@ verify_keyincrement()
     crossystem_verification $auto_update
     sleep 60
 
-    ssh root@$DUT_IP "grep completed /var/log/update_engine.log"
+    ssh root@$DUT_IP "grep '$SUCCESSFUL_UPDATE_TOKEN' $UPDATE_ENGINE_LOG"
 
     if [ $? -ne 0 ]; then
       log Autoupdate Verification Failed on AU$auto_update after reboot
@@ -553,6 +553,9 @@ log Will use chroot: $CHROMIUMOS_DIR
 STORE_DIR=${BOARD}_keyinc_fw$(sed 's/\./_/g' <<<$BIOS_VER)_$USER
 FINAL_CONFIG="autoupdate-ascii-chromeos-$BOARD.config"
 GOOGLEDATA="/google/data/rw/users/$(cut -c1-2 <<<$USER)/$USER/www"
+
+UPDATE_ENGINE_LOG="/var/log/update_engine.log"
+SUCCESSFUL_UPDATE_TOKEN="firmware set as good firmware"
 
 if [ "$FUNC" = "ALL" ]; then
   generate_payload
