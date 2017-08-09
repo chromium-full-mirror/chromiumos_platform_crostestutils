@@ -12,11 +12,12 @@ if [ ! -f /mnt/stateful_partition/.labmachine ]; then
   exit 0
 fi
 
-NON_ETHERNET_DRIVERS="cdc_ether"
 SHILL_START_LOCK_PATH="/var/lock/shill-start.lock"
 
 # See code in src/thirdparty/autotest/files/client/cros/power_suspend.py
 PAUSE_FILE="/run/autotest_pause_ethernet_hook"
+paused_time=0
+
 
 # Critical messages should be sent to /var/log/messages.  Other messages should
 # be sent via echo to be harvested by recover_duts.py.
@@ -24,8 +25,12 @@ PAUSE_FILE="/run/autotest_pause_ethernet_hook"
 # TODO(tbroch) Relocate this to common hook library if/when there's more than
 # one hook.
 critical_msg() {
-  echo "$@"
+  echo $(date --rfc-3339=seconds) " $@" >&2
   logger -t "$(basename $0)" -- "$@"
+}
+
+info_msg() {
+  echo $(date --rfc-3339=seconds) " $@" >&2
 }
 
 # Returns the default gateway.
@@ -34,64 +39,86 @@ get_default_gateway() {
   echo ${ip_route} | head -n 1 | cut -f 3 -d ' '
 }
 
-# Returns 0 if $1 is a non-Ethernet driver, or 1 otherwise.
-is_non_ethernet_driver() {
-  local driver="$1"
-  local non_ethernet_driver
+rescan_usb_hubs() {
+  local port
+  local portnum
+  local usbhub=/sys/bus/usb/drivers/hub
 
-  for non_ethernet_driver in ${NON_ETHERNET_DRIVERS}; do
-    if [ "${driver}" = "${non_ethernet_driver}" ]; then
-      return 0
-    fi
+  for port in ${usbhub}/[0-9]*-0:1.0; do
+    critical_msg "Rescanning  $port"
+    portnum=$(basename "${port}")
+    echo ${portnum} > ${usbhub}/unbind
+    sleep 1
+    echo ${portnum} > ${usbhub}/bind
+    # USB needs a bit of time to scan the "hub"
+    sleep 3
   done
-  return 1
 }
 
-# Returns 0 if $1 indicates its link is connected, or 1 otherwise.
-is_connected() {
-  local device="$1"
-  ip link show "${device}" | grep -q LOWER_UP
+search_devices() {
+  local device_path
+  local device
+
+  for device_path in /sys/class/net/*; do
+    device=$(basename "${device_path}")
+
+    # lab interconnect is full-duplex and tells us so.
+    # devices w/o link won't get listed here
+    if cat "${device_path}/duplex" > /dev/null 2>&1 ; then
+       echo "${device}"
+       continue
+    fi
+
+    # ignore "wwan*" devices: they are 3G/4G/LTE modems.
+    case "${device}" in
+      wwan*|lo) continue;;
+    esac
+
+    # ignore virtual devices (e.g. lxcbr0 or arcbr0)
+    if [ "$(cat ${device_path}/addr_assign_type 2>&1)" != "0" ] ; then
+      continue
+    fi
+
+    # ignore "wlan" devices.
+    if iw "${device}" info > /dev/null 2>&1  ; then
+      continue
+    fi
+
+    echo "${device}"
+  done
 }
 
 # Shows the list of Ethernet interfaces found on the system.
 find_ethernet_interfaces() {
-  local device_path
-  local driver_path
-  local device
-  local driver
+  local interfaces=$(search_devices)
 
-  for device_path in /sys/class/net/{eth,wan,lan,usbeth}*; do
-    if [ -e "${device_path}" ]; then
-      driver_path="${device_path}/device/driver"
-      if [ -e "${driver_path}" ]; then
-        device=$(basename "${device_path}")
-        driver=$(basename $(readlink -f "${driver_path}"))
-        if ! is_non_ethernet_driver "${driver}" || is_connected "${device}" ; then
-          echo "${device}"
-        fi
-      fi
-    fi
-  done
+  if [ -z "${interfaces}" ] ; then
+    # didn't find any eth devices.
+    # Some possible causes are:
+    #   crbug.com/452686 RT8153 (USB3-GigE) dongle coming up as USB-storage
+    #                    (Fixed: "mist" will reset back to ethernet device)
+    #   crbug.com/733425 USB enumeration fails with
+    #                    "device not accepting address 2, error -71"
+    info_msg "No ethernet found: Rescanning USB hubs"
+    rescan_usb_hubs
+
+    # check again
+    interfaces=$(search_devices)
+  fi
+  echo $interfaces
 }
 
-# Shows the list of USB-Ethernet interfaces found on the system.
-find_usb_ethernet_interfaces() {
-  for device_path in /sys/class/net/{eth,wan,lan,usbeth}*; do
-    if [ -e "${device_path}" ]; then
-      if readlink -f "${device_path}" | grep -q usb; then
-        basename "${device_path}"
-      fi
-    fi
-  done
-}
 
-# Pings the given ipaddress through all wired ethernet devices
+# Pings the given ipaddress through all ethernet devices
 # $1 - IP address to ping.
 do_ping() {
   local ip_addr=$1
+  local eth
+
   for eth in $(find_ethernet_interfaces); do
     ping -q -I ${eth} -c 9 ${ip_addr} && return 0
   done
+
   return 1
 }
 
@@ -116,30 +143,18 @@ ping_controlling_server() {
   return 1
 }
 
-reload_usb_ethernet_devices() {
+reload_ethernet_drivers() {
   local eth
   local ret=1
-  for eth in $(find_usb_ethernet_interfaces); do
-    echo "Reload interface ${eth}"
+  for eth in $(find_ethernet_interfaces); do
+    info_msg "Reload driver for interface ${eth}"
     reload_network_device "${eth}"
     ret=0
   done
   return ${ret}
 }
 
-toggle_ethernet_interfaces() {
-  local eth
-  local ret=1
-  for eth in $(find_ethernet_interfaces); do
-    echo "Bounce interface ${eth}"
-    ifconfig "${eth}" down
-    ifconfig "${eth}" up
-    ret=0
-  done
-  return ${ret}
-}
-
-toggle_usb_interfaces() {
+toggle_usb_ports() {
   local device_path
   local ret=1
   for device_path in /sys/class/net/*; do
@@ -157,8 +172,9 @@ toggle_usb_interfaces() {
       ret=0
       # disable port: sort of like unplugging/plugging the dongle
       echo 0 > "${usbpath}/authorized"
-      sleep 3
+      sleep 2
       echo 1 > "${usbpath}/authorized"
+      sleep 1
     fi
   done
   return ${ret}
@@ -170,102 +186,87 @@ restart_connection_manager() {
   # gone, the locker has exited, and the lock is stale.
   if [ -e "${SHILL_START_LOCK_PATH}" ]; then
     lock_holder=$(readlink "${SHILL_START_LOCK_PATH}")
-    echo "Ignoring restart request; lock held by ${lock_holder}"
-    return 1
+    info_msg "Ignoring restart request; lock held by ${lock_holder}"
+    return
   fi
-  initctl stop shill || echo "Shill was not running."
+  initctl stop shill || info_msg "Shill was not running."
   initctl start shill
 }
 
-ensure_connection_manager_is_running() {
-  if initctl status shill | grep -q running ; then
-    return 1
-  fi
-  restart_connection_manager
-}
-
 pause_check_ethernet() {
-
+  paused_time=0
   # power_SuspendStress tests requires many minutes of network timeout
   # tolerance since the SSH connection to the autotest server will be
   # disrupted.   *** See http://crbug.com/334951 ***
   #
   # "Pause" the ethernet check for up to 30 minutes at the
   # request of any test that creates and flocks PAUSE_FILE.
-  if ! flock -xn "${PAUSE_FILE}" ; then
+  if  flock -xn "${PAUSE_FILE}" -c : ; then
     # file wasn't locked - can try to recover ethernet link.
     rm -f "${PAUSE_FILE}"
-    return 0
+    return 1
   fi
 
-  local now=$(date +%s)
+  local now="$(date +%s)"
   local start_time=$(stat -c%Z "${PAUSE_FILE}") || true
 
-  if [ -n "${start_time}" ]; then
-    let paused_time=$((now - start_time))
-
-    if [ "${paused_time}" -gt 1800 ]; then
-      # check link despite PAUSE_FILE locked.
-      critical_msg "PAUSE_TIME (${paused_time}) exceeded 1800 seconds."
-      return 0
-    fi
+  if [ -z "${start_time}" ]; then
+      return 1
   fi
 
-  return 1
+  paused_time=$((now - start_time))
+  return 0
 }
 
-recover_network() {
-  for recovery_method in \
-      ensure_connection_manager_is_running \
-      toggle_ethernet_interfaces \
-      toggle_usb_interfaces \
-      reload_usb_ethernet_devices \
-      restart_connection_manager
-  do
+main() {
+  local recovery_method
+
+  for recovery_method in toggle_usb_ports reload_ethernet_drivers; do
+    if pause_check_ethernet ; then
+      # pause_check_ethernet() sets up $paused_time.
+      if [ ${paused_time} -gt $((30*60)) ] ; then
+        critical_msg "Pause request exceeded 30 minutes. Checking lab network link."
+        rm -f "${PAUSE_FILE}"
+      else
+        info_msg "Ethernet Check Pause started ${paused_time} seconds ago."
+        return 0
+      fi
+    fi
+
+    # Attempt to ping our controlling autotest server over ethernet.
+    if ping_controlling_server; then
+      return 0
+    fi
+
     critical_msg "Attempting recovery method \"${recovery_method}\""
+
     # A success return from the recovery method implies that it successfully
     # performed some action that makes it worth re-checking to see whether
     # our connectivity was remediated.  Otherwise, we move on to the next
     # recovery method without delay.
     "${recovery_method}" || continue
-    sleep 30
-    ifconfig -a
 
-    if ping_controlling_server; then
-      critical_msg "Recovery method \"${recovery_method}\" successful"
-      return 0
+    local now="$(date +%s)"
+    local start_time="${now}"
+    local method_timeout=$(( now + 30 ))
+
+    if ! initctl status shill | grep -q running ; then
+      restart_connection_manager
     fi
 
-    if pause_ethernet_check; then
-      critical_msg "Pausing ethernet recovery."
-      return 0
-    fi
+    # poll "controlling_server" until timeout
+    # NB: Our Lab DHCP servers must respond in < 30 seconds.
+    while [ $now -lt $method_timeout ]; do
+      if ping_controlling_server; then
+        critical_msg "${recovery_method} successful after $(( now - start_time )) seconds."
+        return 0
+      fi
+      sleep 1
+      now=$(date +%s)
+    done
   done
 
-  # results in reboot
-  return 1
-}
-
-TIMEOUT_MINUTES=15
-TIMEOUT=$(( TIMEOUT_MINUTES * 60 ))
-
-main() {
-  # Attempt to ping our controlling autotest server over ethernet.
-
-  local endtime=$(( $(date +%s) + TIMEOUT ))
-  if ping_controlling_server; then
-    return 0
-  fi
-
-  if pause_ethernet_check; then
-    return 0
-  fi
-
-  if recover_network; then
-    return 0
-  fi
-
-  critical_msg "All efforts to recover ethernet have been exhausted. Rebooting."
+  critical_msg "All ethernet recovery methods have failed. Rebooting."
   sync
   (sleep 5 && reboot) &
   return 1
