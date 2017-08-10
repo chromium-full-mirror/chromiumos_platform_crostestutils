@@ -136,6 +136,29 @@ toggle_ethernet_interfaces() {
   return $ret
 }
 
+toggle_usb_interfaces() {
+  local device_path
+  local ret=1
+  for device_path in /sys/class/net/*; do
+    local usbpath=$(readlink -f "${device_path}")
+    # Example of what usbpath is expect to look like:
+    #    usbpath=/sys/devices/pci0000:00/0000:00:14.0/usb2/2-2/2-2:1.0/net/eth1
+    #
+    # But we want the port for that device:
+    #    echo ${usbpath%/*/net/eth[0-9]*}
+    #    /sys/devices/pci0000:00/0000:00:14.0/usb2/2-2
+    usbpath=${usbpath%/*/net/eth[0-9]*}
+    if [ -w ${usbpath}/authorized ]; then
+      ret=0
+      # disable port: sort of like unplugging/plugging the dongle
+      echo 0 > ${usbpath}/authorized
+      sleep 3
+      echo 1 > ${usbpath}/authorized
+    fi
+  done
+  return $ret
+}
+
 restart_connection_manager() {
   # NB: -e will fail on a dangling symlink. That's deliberate. The
   # symlink should point at /proc/<locker's PID>. And if that path is
@@ -160,6 +183,7 @@ recover_network() {
   for recovery_method in \
       ensure_connection_manager_is_running \
       toggle_ethernet_interfaces \
+      toggle_usb_interfaces \
       reload_usb_ethernet_devices \
       restart_connection_manager; do
     critical_msg "Attempting recovery method \"${recovery_method}\""
