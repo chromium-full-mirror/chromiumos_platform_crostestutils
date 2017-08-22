@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
 
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -241,7 +241,7 @@ def main():
             log_dir=opts.test_results_root)
         my_server.Start()
 
-      if opts.type == 'vm' or opts.type == 'gce' and opts.parallel:
+      if (opts.type == 'vm' or opts.type == 'gce') and opts.parallel:
         _RunTestsInParallel(opts)
       else:
         # TODO(sosa) - Take in a machine pool for a real test.
