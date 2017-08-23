@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import datetime
 import os
+import random
 import shutil
 import tempfile
 import time
@@ -24,6 +25,12 @@ from crostestutils.au_test_harness import constants
 
 # Information of the GCE project and default instance properties.
 GCE_PROJECT = 'cros-autotest-bots'
+GCE_ALL_ZONES = (
+    'us-central1-a',
+    'us-central1-b',
+    'us-central1-c',
+    'us-central1-f',
+)
 GCE_DEFAULT_ZONE = 'us-central1-a'
 GCE_DEFAULT_NETWORK = 'network-prod'
 GCE_DEFAULT_MACHINE_TYPE = 'n1-standard-8'
@@ -35,6 +42,8 @@ DEFAULT_INSTANCE_SCOPES = (
     'https://www.googleapis.com/auth/logging.write',
     'https://www.googleapis.com/auth/cloudimagemanagement',
 )
+# Number of times to try until a GCE instance is created successfully.
+CREATE_INSTANCE_ATTEMPTS = 3
 
 
 class GCEAUWorker(au_worker.AUWorker):
@@ -204,11 +213,22 @@ class GCEAUWorker(au_worker.AUWorker):
             'scopes': self.instance_scopes,
         },
     ]
-    self.gce_context.CreateInstance(self.instance, self.image_link,
-                                    machine_type=self.machine_type,
-                                    network=self.network,
-                                    static_address=self.address,
-                                    serviceAccounts=service_accounts)
+    # Though rare, the create instance operation may fail due to zonal outages.
+    # Retry a couple of times for redundancy.
+    for i, zone in enumerate(random.sample(GCE_ALL_ZONES,
+                                           CREATE_INSTANCE_ATTEMPTS)):
+      try:
+        self.gce_context.zone = zone
+        self.gce_context.CreateInstance(self.instance, self.image_link,
+                                        machine_type=self.machine_type,
+                                        network=self.network,
+                                        static_address=self.address,
+                                        serviceAccounts=service_accounts)
+      except gce.Error as e:
+        logging.error('Failed to create instance [attempt %d/%d]: %r', i + 1,
+                      CREATE_INSTANCE_ATTEMPTS, e)
+      else:
+        break
 
   def _DeleteExistingResources(self):
     """Deletes all allocated GCP resources."""
