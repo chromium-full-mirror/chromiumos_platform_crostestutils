@@ -1,34 +1,47 @@
 #!/bin/bash
 #
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# Usage: dut.sh DUT_IP
+# script to get the DUT configureation
 #
-cat <<EOF | ssh root@$1
-echo -n "Board and Stage   : "
+
+
+DUT_IP=$1
+
+cat <<EOF | ssh -T root@$DUT_IP
+echo -n "Type of hardware  : "
 dut_type=\$(grep '^CHROMEOS_RELEASE_BOARD=' /etc/lsb-release | cut -d= -f2)
-echo "\$dut_type / {***Example: EVT, DVT, PVT...***}"
+echo \$dut_type '{DEVICE STAGE: EVT, DVT, PVT...}'
 
 echo -n "Chrome OS Version : "
-pat='^CHROMEOS_RELEASE_(CHROME_MILESTONE|DESCRIPTION)'
-echo M\$(egrep "\$pat" /etc/lsb-release | cut -d= -f2-)
+grep '^CHROMEOS_RELEASE_DESCRIPTION=' /etc/lsb-release | cut -d= -f2
 
-
-echo -n "BIOS VERSION      : "
+echo -n "BIOS Version      : "
 echo \$(crossystem ro_fwid) / \$(crossystem fwid)
 
 mosys | grep -w ec > /dev/null 2>&1
 if [ \$? -eq 0 ]; then
   echo -n "EC Version        : "
-  echo \$(ectool version | awk '/^RO/{print \$3}') / \$(ectool version | awk '/^RW/{print \$3}')
+  echo \$(ectool version | awk '/^RO/{print \$3}') / \
+       \$(ectool version | awk '/^RW/{print \$3}')
 fi
 
-mosys | grep pd > /dev/null 2>&1
+ectool --dev=1 version > /dev/null 2>&1
 if [ \$? -eq 0 ]; then
   echo -n "PD Version        : "
-  echo \$(ectool --dev=1 version | awk '/^RO/{print \$3}') / \$(ectool --dev=1 version | awk '/^RW/{print \$3}')
+  echo \$(ectool --dev=1 version | awk '/^RO/{print \$3}') / \
+       \$(ectool --dev=1 version | awk '/^RW/{print \$3}')
+fi
+
+ls /var/cache/cr50-version > /dev/null 2>&1
+if [ \$? -eq 0 ]; then
+  echo -n "cr50 Version      : "
+  stop trunksd >/dev/null 2>&1
+  echo \$(usb_updater -fs | awk '/^RO/{print \$2}') / \
+       \$(usb_updater -fs | awk '/^RW/{print \$2}')
+  start trunksd >/dev/null 2>&1
 fi
 
 # Other info
@@ -36,14 +49,22 @@ echo
 echo 'CPU arch     :' \$(lscpu | awk '/^Architecture:/{print \$2}')
 echo 'CPU model    :' \$(lscpu | grep '^Model name:' | cut -d: -f2-)
 echo 'CPU speed    :' \$(lscpu | grep '^CPU max MHz:' | cut -d: -f2-)
-echo 'Total Memory :' \$(grep '^MemTotal:' /proc/meminfo 2>/dev/null| cut -d: -f2-)
-echo 'Memory Type  :' \$(mosys memory spd print id 2>/dev/null| cut -d'|' -f2- | sort -u)
+echo 'Total Memory :' \$(grep '^MemTotal:' /proc/meminfo 2>/dev/null \
+                      | cut -d: -f2-)
+echo 'Memory Type  :' \$(mosys memory spd print id 2>/dev/null \
+                      | cut -d'|' -f2- | sort -u)
 
 # For device with eMMC should be mtdinfo -a (but currently don't work)
-ls /sys/block/mmcblk0 > /dev/null 2>&1
-if [ \$? -eq 0 ]; then
-  echo 'MMC Model    :' \$(cat /sys/block/mmcblk0/device/name)
-  echo 'MMC Firmware :' \$(cat /sys/block/mmcblk0/device/fwrev)
+mmcblk="\$(ls -d /sys/block/mmcblk? 2>/dev/null)"
+NVME_FILE="/dev/nvme0n1"
+if [ ! -z "\$mmcblk" ]; then
+  echo 'MMC Model    :' \$(cat \$mmcblk/device/name)
+  echo 'MMC Firmware :' \$(cat \$mmcblk/device/fwrev)
+elif [ -b "\$NVME_FILE" ]; then
+  echo 'NVMe Model   :' \$(smartctl -a \$NVME_FILE \
+                        |grep "Model Number" | awk '{print \$3,\$4}')
+  echo 'NVMe Firmware:' \$(smartctl -a \$NVME_FILE \
+                        |grep "Firmware Version" | awk '{print \$3}')
 else
   hdparm -I /dev/sda \
     | awk '/Model Number:/     {print "SSD Model    :", substr(\$0, index(\$0,\$3))}
