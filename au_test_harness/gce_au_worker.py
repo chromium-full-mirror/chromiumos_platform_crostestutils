@@ -12,6 +12,7 @@ import random
 import shutil
 import tempfile
 import time
+import urllib2
 
 from multiprocessing import Process
 
@@ -32,7 +33,8 @@ GCE_ALL_ZONES = (
     'us-central1-f',
 )
 GCE_DEFAULT_ZONE = 'us-central1-a'
-GCE_DEFAULT_NETWORK = 'network-prod'
+GCE_DEFAULT_NETWORK = 'network-vpc'
+GCE_DEFAULT_SUBNET = 'subnet-us-central-192'
 GCE_DEFAULT_MACHINE_TYPE = 'n1-standard-8'
 GCE_JSON_KEY = '/creds/service_accounts/service-account-cros-autotest-bots.json'
 GCS_BUCKET = 'chromeos-test-gce-tarballs'
@@ -63,6 +65,7 @@ class GCEAUWorker(au_worker.AUWorker):
     instance: GCE VM instance associated with a worker.
     address_name: Name of the static IP address reserved for |instance|.
     address: IP address of |address_name|.
+    internal_ip: Internal IP address of |instance|.
   """
   _GS_PATH_COMMON_PREFIX = 'gs://'
   _GS_URL_COMMON_PREFIX = 'https://storage.googleapis.com/'
@@ -95,9 +98,15 @@ class GCEAUWorker(au_worker.AUWorker):
     self.instance = None
     self.address = None
     self.address_name = None
+    self.internal_ip = None
 
     # Background processes that delete throw-away instances.
     self._bg_delete_processes = []
+
+    # In indicator of whether or not the worker is run from a GCE builder. Some
+    # of the logic in this module needs to be compatible with non-GCE builders.
+    self._on_gce = _OnGCE()
+
 
   def CleanUp(self):
     """Deletes throw-away instances and images."""
@@ -146,9 +155,11 @@ class GCEAUWorker(au_worker.AUWorker):
           self.gce_context.project, self.gce_context.zone, self.instance,
           path_util.ToChrootPath(gce_key_copy.name))
 
+      dut_ip = self.internal_ip if self._on_gce else self.address
       cmd = ['test_that', '-b', self.board, '--no-quickmerge',
-             '--results_dir=%s' % log_directory_in_chroot, self.address, test,
+             '--results_dir=%s' % log_directory_in_chroot, dut_ip, test,
              '--args=%s' % args]
+
       if self.ssh_private_key is not None:
         cmd.append('--ssh_private_key=%s' %
                    path_util.ToChrootPath(self.ssh_private_key))
@@ -202,9 +213,12 @@ class GCEAUWorker(au_worker.AUWorker):
     self.image_link = self.gce_context.CreateImage(
         self.image, self._GsPathToUrl(self.tarball_remote))
 
-    # Create a static IP address.
-    self.address_name = self.instance = self._INSTANCE_PREFIX + ts
-    self.address = self.gce_context.CreateAddress(self.address_name)
+    self.instance = self._INSTANCE_PREFIX + ts
+
+    if not self._on_gce:
+      # Have to use a static external IP address if not on GCE.
+      self.address_name = self.instance
+      self.address = self.gce_context.CreateAddress(self.address_name)
 
     # Create an instance.
     service_accounts = [
@@ -213,22 +227,30 @@ class GCEAUWorker(au_worker.AUWorker):
             'scopes': self.instance_scopes,
         },
     ]
+
     # Though rare, the create instance operation may fail due to zonal outages.
     # Retry a couple of times for redundancy.
     for i, zone in enumerate(random.sample(GCE_ALL_ZONES,
                                            CREATE_INSTANCE_ATTEMPTS)):
       try:
         self.gce_context.zone = zone
-        self.gce_context.CreateInstance(self.instance, self.image_link,
-                                        machine_type=self.machine_type,
-                                        network=self.network,
-                                        static_address=self.address,
-                                        serviceAccounts=service_accounts)
+        self.gce_context.CreateInstance(
+            name=self.instance,
+            image=self.image_link,
+            machine_type=self.machine_type,
+            network=GCE_DEFAULT_NETWORK,
+            subnet=GCE_DEFAULT_SUBNET,
+            serviceAccounts=service_accounts,
+            static_address=None if self._on_gce else self.address)
+
       except gce.Error as e:
         logging.error('Failed to create instance [attempt %d/%d]: %r', i + 1,
                       CREATE_INSTANCE_ATTEMPTS, e)
       else:
         break
+
+    # Get the internal IP of the instance.
+    self.internal_ip = self.gce_context.GetInstanceInternalIP(self.instance)
 
   def _DeleteExistingResources(self):
     """Deletes all allocated GCP resources."""
@@ -315,3 +337,12 @@ class GCEAUWorker(au_worker.AUWorker):
     for p in self._bg_delete_processes:
       p.join()
     self._bg_delete_processes = []
+
+
+def _OnGCE():
+  """Checks if running on a GCE VM or not."""
+  try:
+    urllib2.urlopen('http://metadata.google.internal', timeout=10)
+    return True
+  except urllib2.URLError:
+    return False
