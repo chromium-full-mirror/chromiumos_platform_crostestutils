@@ -15,6 +15,9 @@ fi
 NON_ETHERNET_DRIVERS="cdc_ether"
 SHILL_START_LOCK_PATH="/var/lock/shill-start.lock"
 
+# See code in src/thirdparty/autotest/files/client/cros/power_suspend.py
+PAUSE_FILE="/run/autotest_pause_ethernet_hook"
+
 # Critical messages should be sent to /var/log/messages.  Other messages should
 # be sent via echo to be harvested by recover_duts.py.
 #
@@ -121,7 +124,7 @@ reload_usb_ethernet_devices() {
     reload_network_device "${eth}"
     ret=0
   done
-  return $ret
+  return ${ret}
 }
 
 toggle_ethernet_interfaces() {
@@ -133,7 +136,7 @@ toggle_ethernet_interfaces() {
     ifconfig "${eth}" up
     ret=0
   done
-  return $ret
+  return ${ret}
 }
 
 toggle_usb_interfaces() {
@@ -158,7 +161,7 @@ toggle_usb_interfaces() {
       echo 1 > "${usbpath}/authorized"
     fi
   done
-  return $ret
+  return ${ret}
 }
 
 restart_connection_manager() {
@@ -167,7 +170,7 @@ restart_connection_manager() {
   # gone, the locker has exited, and the lock is stale.
   if [ -e "${SHILL_START_LOCK_PATH}" ]; then
     lock_holder=$(readlink "${SHILL_START_LOCK_PATH}")
-    echo "Ignoring restart request; lock held by $lock_holder"
+    echo "Ignoring restart request; lock held by ${lock_holder}"
     return 1
   fi
   initctl stop shill || echo "Shill was not running."
@@ -181,13 +184,44 @@ ensure_connection_manager_is_running() {
   restart_connection_manager
 }
 
+pause_check_ethernet() {
+
+  # power_SuspendStress tests requires many minutes of network timeout
+  # tolerance since the SSH connection to the autotest server will be
+  # disrupted.   *** See http://crbug.com/334951 ***
+  #
+  # "Pause" the ethernet check for up to 30 minutes at the
+  # request of any test that creates and flocks PAUSE_FILE.
+  if ! flock -xn "${PAUSE_FILE}" ; then
+    # file wasn't locked - can try to recover ethernet link.
+    rm -f "${PAUSE_FILE}"
+    return 0
+  fi
+
+  local now=$(date +%s)
+  local start_time=$(stat -c%Z "${PAUSE_FILE}") || true
+
+  if [ -n "${start_time}" ]; then
+    let paused_time=$((now - start_time))
+
+    if [ "${paused_time}" -gt 1800 ]; then
+      # check link despite PAUSE_FILE locked.
+      critical_msg "PAUSE_TIME (${paused_time}) exceeded 1800 seconds."
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 recover_network() {
   for recovery_method in \
       ensure_connection_manager_is_running \
       toggle_ethernet_interfaces \
       toggle_usb_interfaces \
       reload_usb_ethernet_devices \
-      restart_connection_manager; do
+      restart_connection_manager
+  do
     critical_msg "Attempting recovery method \"${recovery_method}\""
     # A success return from the recovery method implies that it successfully
     # performed some action that makes it worth re-checking to see whether
@@ -201,7 +235,14 @@ recover_network() {
       critical_msg "Recovery method \"${recovery_method}\" successful"
       return 0
     fi
+
+    if pause_ethernet_check; then
+      critical_msg "Pausing ethernet recovery."
+      return 0
+    fi
   done
+
+  # results in reboot
   return 1
 }
 
@@ -210,29 +251,19 @@ TIMEOUT=$(( TIMEOUT_MINUTES * 60 ))
 
 main() {
   # Attempt to ping our controlling autotest server over ethernet.
-  # We guarantee a minimum of 12 minutes network timeout tolerance
-  # for tests that disrupt connectivity with the SSH connection from
-  # the autotest server.  This timeout is 15 minutes to make sure it
-  # can never fail before that SSH session does.
 
   local endtime=$(( $(date +%s) + TIMEOUT ))
   if ping_controlling_server; then
     return 0
   fi
+
+  if pause_ethernet_check; then
+    return 0
+  fi
+
   if recover_network; then
     return 0
   fi
-  critical_msg "Restart failed; will retry recovery for ~$TIMEOUT_MINUTES minutes"
-  while [ $(date +%s) -lt $endtime ]; do
-    sleep 30
-    if ping_controlling_server; then
-      critical_msg "Gateway now reachable; ending recovery loop"
-      return 0
-    fi
-    if recover_network; then
-      return 0
-    fi
-  done
 
   critical_msg "All efforts to recover ethernet have been exhausted. Rebooting."
   sync
