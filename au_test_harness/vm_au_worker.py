@@ -25,6 +25,7 @@ class VMAUWorker(au_worker.AUWorker):
     """Processes vm-specific options."""
     super(VMAUWorker, self).__init__(options, test_results_root)
     self.graphics_flag = ''
+    self.verbose = options.verbose
     if options.no_graphics:
       self.graphics_flag = '--no_graphics'
     if not self.board:
@@ -190,13 +191,17 @@ class VMAUWorker(au_worker.AUWorker):
     if self.ssh_private_key is not None:
       command.append('--ssh_private_key=%s' % self.ssh_private_key)
 
-    self.TestInfo('Running smoke suite to verify image.')
-    result = cros_build_lib.RunCommand(
-        command, print_cmd=False, combine_stdout_stderr=True,
-        cwd=constants.CROSUTILS_DIR, error_code_ok=True,
-        capture_output=True)
+    self.TestInfo('Running %s suite to verify image.' % test)
 
+    result = cros_build_lib.RunCommand(
+        command, print_cmd=self.verbose, combine_stdout_stderr=True,
+        cwd=constants.CROSUTILS_DIR, error_code_ok=True,
+        capture_output=not self.verbose)
     # If the command failed or printed warnings, print the output.
+    # TODO(pwang): result.output should contain the output of the command even
+    # though verbose is set to print to stdout.
+    if result.output is None:
+      result.output = ''
     if result.returncode != 0 or '@@@STEP_WARNINGS@@@' in result.output:
       print(result.output)
       self._HandleFail(log_directory, fail_directory)
