@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -126,6 +126,13 @@ def main():
                             'location (useful if you have filled up your '
                             'harddrive).'))
   arguments = parser.parse_args()
+
+  # Ensure gsutil is installed.
+  try:
+    subprocess.check_output(['which', 'gsutil'])
+  except subprocess.CalledProcessError:
+    print ('Error finding gsutil!  Please make sure it is installed.')
+    return
 
   # Find src/ dir.
   script_file_dir = os.path.dirname(os.path.realpath(__file__))
