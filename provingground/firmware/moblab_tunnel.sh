@@ -7,13 +7,13 @@
 # Manage ssh tunnels to local mobalabs used for
 # firmware testing.
 
-MOBLAB1="${MOBLAB1:-100.107.195.217}"
-MOBLAB2="${MOBLAB2:-100.107.195.212}"
-MOBLAB3="${MOBLAB3:-100.107.195.220}"
-MOBLAB4="${MOBLAB4:-100.107.195.213}"
-MOBLAB5="${MOBLAB5:-100.107.195.219}"
-MOBLAB6="${MOBLAB6:-100.107.195.211}"
-MOBLAB7="${MOBLAB7:-100.107.195.215}"
+MOBLAB1="${MOBLAB1:-moblab1.mtv.corp.google.com}"
+MOBLAB2="${MOBLAB2:-moblab2.mtv.corp.google.com}"
+MOBLAB3="${MOBLAB3:-moblab3.mtv.corp.google.com}"
+MOBLAB4="${MOBLAB4:-moblab4.mtv.corp.google.com}"
+MOBLAB5="${MOBLAB5:-moblab5.mtv.corp.google.com}"
+MOBLAB6="${MOBLAB6:-moblab6.mtv.corp.google.com}"
+MOBLAB7="${MOBLAB7:-moblab7.mtv.corp.google.com}"
 
 declare -A MOBLABS=(
 ["moblab1"]=${MOBLAB1}
