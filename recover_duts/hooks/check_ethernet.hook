@@ -145,15 +145,17 @@ toggle_usb_interfaces() {
     #    usbpath=/sys/devices/pci0000:00/0000:00:14.0/usb2/2-2/2-2:1.0/net/eth1
     #
     # But we want the port for that device:
-    #    echo ${usbpath%/*/net/eth[0-9]*}
+    #    echo ${usbpath%/*/net/*}
     #    /sys/devices/pci0000:00/0000:00:14.0/usb2/2-2
-    usbpath=${usbpath%/*/net/eth[0-9]*}
-    if [ -w ${usbpath}/authorized ]; then
+    usbpath=${usbpath%/*/net/*}
+
+    # Only USB devices have "authorized" field in /sys
+    if [ -w "${usbpath}/authorized" ]; then
       ret=0
       # disable port: sort of like unplugging/plugging the dongle
-      echo 0 > ${usbpath}/authorized
+      echo 0 > "${usbpath}/authorized"
       sleep 3
-      echo 1 > ${usbpath}/authorized
+      echo 1 > "${usbpath}/authorized"
     fi
   done
   return $ret
