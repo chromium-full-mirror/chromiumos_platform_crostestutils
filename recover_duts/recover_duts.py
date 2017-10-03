@@ -23,8 +23,8 @@ from logging import handlers
 LOGGING_SUBDIR = '/var/log/recover_duts'
 LOG_FILENAME = 'recover_duts.log'
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-LONG_REBOOT_DELAY = 300
-SLEEP_DELAY = 600
+LONG_REBOOT_DELAY = 90
+SLEEP_DELAY = 60
 LOG_FILE_BACKUP_COUNT = 10
 LOG_FILE_SIZE = 1024 * 5000 # 5000 KB
 
