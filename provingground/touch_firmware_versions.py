@@ -77,7 +77,7 @@ def reduce_string(link, text):
 
   Assumes variables embedded in a string are in ${VAR} or \s$VAR\s format.
   E.g., given '"${PRODUCT_ID_TP}_${FIRMWARE_VERSION_TP}.bin"' return
-  '"85.0_7.0.bin"', after following all variables.
+  '85.0_7.0.bin', after following all variables.
   Assumes the entire string could be a varible of the form $VAR (no { }).
 
   Args:
@@ -93,7 +93,7 @@ def reduce_string(link, text):
     if search:
       break
   else:
-    return link
+    return link.replace('"', '')
 
   variable = search.group(1)
   value = find_value_of_variable(variable, text)
@@ -127,12 +127,10 @@ def find_info_from_line(info, line, text):
   if link_from != '':
     search = re.search(r'([^/"]*)_(.*)\.', link_from)
     if search:
-      hw_id = search.group(1)
-      fw_version = search.group(2)
+      hw_id = search.group(1).replace('"', '')
+      fw_version = search.group(2).replace('"', '')
   if link_to != '':
-    search = re.search(r'/([^/]*?)(\.bin|\.fw|\.hex)?"', link_to)
-    if search:
-      fw_file = search.group(1)
+    fw_file = os.path.basename(link_to)
 
   info.set_ids(hw_id, fw_version, fw_file)
 
@@ -204,7 +202,8 @@ def find_firmwares_in_file(path):
     if values.hw_id != None:
       if values.hw_id == '' or values.fw_id == '' or values.fw_file == '':
         values.problem_found = True
-        values.error = ('Values did not make sense: %s' % values)
+        values.error = ('Values did not make sense: %s, %s, %s' % (
+            values.hw_id, values.fw_id, values.fw_file))
       values_list.append(values)
 
   return values_list
@@ -218,7 +217,7 @@ def firmware_versions():
 
   # Find ebuild files, e.g. chromeos-touch-firmware-caroline-0.0.1.ebuild
   find_output = ''
-  cmd = 'find %s -regex .*touch-firmware-.*-[0-9]+\.[0-9]+\.[0-9]+\.ebuild'
+  cmd = 'find %s -regex .*touch-firmware-.*-[0-9.]+\.ebuild'
   for d in ['private-overlays/', 'overlays/']:
     find_output += subprocess.check_output((cmd % d).split(' '))
   ebuilds = find_output.split()
