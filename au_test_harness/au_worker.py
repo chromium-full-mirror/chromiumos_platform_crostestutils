@@ -272,7 +272,7 @@ class AUWorker(object):
     """
     # Initialize port vars.
     self._ssh_port = port
-    self._kvm_pid_file = '/tmp/kvm.%d' % port
+    self._kvm_pid_file = '/tmp/kvm.%d' % self._ssh_port
 
     # Initialize test results directory.
     self.test_name = inspect.stack()[1][3]

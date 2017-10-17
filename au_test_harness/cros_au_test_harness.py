@@ -153,6 +153,12 @@ def CheckOpts(parser, opts):
   if opts.ssh_private_key and not os.path.isfile(opts.ssh_private_key):
     parser.error('Testing requires a valid path to the ssh private key.')
 
+  if opts.ssh_port and opts.ssh_port < 1024:
+    parser.error('Testing requires a valid port higher than 1024.')
+
+  if opts.ssh_port and not opts.test_prefix:
+    parser.error('Testing with ssh_port requires test_prefix specified.')
+
   if opts.test_results_root:
     if not 'chroot/tmp' in opts.test_results_root:
       parser.error('Must specify a test results root inside tmp in a chroot.')
@@ -213,6 +219,9 @@ def main():
   parser.add_argument('--ssh_private_key', default=None,
                       help='Path to the private key to use to ssh into the '
                       'image as the root user.')
+  parser.add_argument('--ssh_port', default=None, type=int,
+                      help='ssh port used to ssh into image. (Should only be'
+                      ' used with --test_prefix)')
   opts = parser.parse_args()
 
   CheckOpts(parser, opts)

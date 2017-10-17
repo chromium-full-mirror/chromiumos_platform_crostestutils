@@ -81,6 +81,7 @@ class CTest(object):
 
     # An optional ssh private key used for testing.
     self.ssh_private_key = opts.ssh_private_key
+    self.ssh_port = opts.ssh_port
 
   def GeneratePublicKey(self):
     """Returns the path to a generated public key from the UE private key."""
@@ -185,6 +186,8 @@ class CTest(object):
 
     if self.ssh_private_key is not None:
       cmd.append('--ssh_private_key=%s' % self.ssh_private_key)
+    if self.ssh_port is not None:
+      cmd.append('--ssh_port=%s' % self.ssh_port)
 
     if suite:
       cmd.append('--verify_suite_name=%s' % suite)
@@ -254,6 +257,9 @@ def main():
   parser.add_argument('--ssh_private_key', default=None,
                       help='Path to the private key to use to ssh into the '
                       'image as the root user')
+  parser.add_argument('--ssh_port', default=None, type=int,
+                      help='ssh port used to ssh into image. (Should only be'
+                      ' used with either --quick_update or --only_verify)')
 
   opts = parser.parse_args()
 
@@ -262,6 +268,10 @@ def main():
   if opts.only_verify and opts.quick_update:
     parser.error(
         'Only one of --only_verify or --quick_update should be specified.')
+  if opts.ssh_port and not (opts.only_verify or opts.quick_update):
+    parser.error(
+        'ssh_port should be specified with either --only_verify or '
+        '--quick_update')
 
   # force absolute path for these opts, since a chdir occurs deeper in the
   # codebase.

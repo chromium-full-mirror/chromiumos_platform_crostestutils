@@ -131,7 +131,7 @@ class AUTest(unittest.TestCase):
     This test checks that we can update by updating the stateful partition
     rather than wiping it.
     """
-    self.worker.Initialize(9222)
+    self.worker.Initialize(self.options.ssh_port or 9222)
     # Just make sure some tests pass on original image.  Some old images
     # don't pass many tests.
     base_image_path = self.worker.PrepareBase(self.base_image_path)
@@ -150,7 +150,7 @@ class AUTest(unittest.TestCase):
     This test checks that we can update successfully after wiping the
     stateful partition.
     """
-    self.worker.Initialize(9223)
+    self.worker.Initialize(self.options.ssh_port or 9223)
     # Just make sure some tests pass on original image.  Some old images
     # don't pass many tests.
     base_image_path = self.worker.PrepareBase(self.base_image_path)
@@ -195,12 +195,12 @@ class AUTest(unittest.TestCase):
         self.data_size += len(data)
         return data
 
-    self.worker.Initialize(9224)
+    self.worker.Initialize(self.options.ssh_port or 9224)
     self.AttemptUpdateWithFilter(InterruptionFilter(), proxy_port=8082)
 
   def testSimpleSignedUpdate(self):
     """Test that updates to itself with a signed payload."""
-    self.worker.Initialize(9226)
+    self.worker.Initialize(self.options.ssh_port or 9226)
     signed_target_image_path = self.worker.PrepareBase(self.target_image_path,
                                                        signed_base=True)
     if self.payload_signing_key:
@@ -216,7 +216,7 @@ class AUTest(unittest.TestCase):
     We explicitly don't use test prefix so that isn't run by default.  Can be
     run using test_prefix option.
     """
-    self.worker.Initialize(9227)
+    self.worker.Initialize(self.options.ssh_port or 9227)
     target_image_path = self.worker.PrepareBase(self.target_image_path)
     self.worker.PerformUpdate(target_image_path, target_image_path)
     self.assertTrue(self.worker.VerifyImage(self))
@@ -227,7 +227,7 @@ class AUTest(unittest.TestCase):
     We explicitly don't use test prefix so that isn't run by default.  Can be
     run using test_prefix option.
     """
-    self.worker.Initialize(9228)
+    self.worker.Initialize(self.options.ssh_port or 9228)
     self.worker.PrepareBase(self.target_image_path)
     self.assertTrue(self.worker.VerifyImage(self))
 
@@ -263,19 +263,19 @@ class AUTest(unittest.TestCase):
         self.data_size += len(data)
         return data
 
-    self.worker.Initialize(9225)
+    self.worker.Initialize(self.options.ssh_port or 9225)
     self.AttemptUpdateWithFilter(DelayedFilter(), proxy_port=8083)
 
   def NotestPlatformToolchainOptions(self):
     """Tests the hardened toolchain options."""
-    self.worker.Initialize(9229)
+    self.worker.Initialize(self.options.ssh_port or 9229)
     self.worker.PrepareBase(self.base_image_path)
     self.assertTrue(self.worker.VerifyImage('platform_ToolchainOptions'))
 
   # TODO(sosa): Get test to work with verbose.
   def NotestPartialUpdate(self):
     """Tests what happens if we attempt to update with a truncated payload."""
-    self.worker.Initialize(9230)
+    self.worker.Initialize(self.options.ssh_port or 9230)
     # Preload with the version we are trying to test.
     self.worker.PrepareBase(self.target_image_path)
 
@@ -294,7 +294,7 @@ class AUTest(unittest.TestCase):
   # TODO(sosa): Get test to work with verbose.
   def NotestCorruptedUpdate(self):
     """Tests what happens if we attempt to update with a corrupted payload."""
-    self.worker.Initialize(9231)
+    self.worker.Initialize(self.options.ssh_port or 9231)
     # Preload with the version we are trying to test.
     self.worker.PrepareBase(self.target_image_path)
 
