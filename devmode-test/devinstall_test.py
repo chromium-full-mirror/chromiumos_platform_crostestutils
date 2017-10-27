@@ -64,18 +64,17 @@ class DevModeTest(object):
     try:
       if self.devserver:
         self.devserver.Stop()
-
       self.devserver = None
       if self.device:
         self.device.Cleanup()
-
       self.device = None
-      self.vm.Stop()
+      if self.vm:
+        self.vm.Stop()
       self.vm = None
       osutils.RmDir(self.tmpdir, ignore_missing=True)
       self.tmpdir = None
     except Exception:
-      logging.warning('Received error during cleanup', exc_info=True)
+      logging.exception('Received error during cleanup')
 
   def _WipeDevInstall(self):
     """Wipes the devinstall state."""
