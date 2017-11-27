@@ -25,19 +25,21 @@ class UploadUtils(object):
   SPACE_COUNT_CTS_BUILD_VERSION = 12
   SPACE_COUNT_CTS_BOARD_ABI = 13
   SPACE_COUNT_PACKAGE_NAME = 30
-  SPACE_COUNT_FAILED_TESTS = 6
-  SPACE_COUNT_PASSED_TESTS = 6
+  SPACE_COUNT_FAILED_TESTS = 8
+  SPACE_COUNT_PASSED_TESTS = 8
+  SPACE_COUNT_TEST_NAME = 70
   C_PURPLE = '\033[95m'
   C_RED = '\033[91m'
   C_BLACK = '\033[98m'
   BOLD = '\033[1m'
   C_END = '\033[00m'
-  TABLE_HEADER_CTS = (' Time Stamp           : Board   :'
-                      'Build Version : Board ABI : '
-                      'TEST PACKAGE / MODULE NAME  : FAILED :'
-                      ' PASSED')
-  TABLE_HEADER_CTSV = (' Build Board Name : '
-                       'Build Board Version : '
+  TABLE_HEADER_CTS = (' TIME STAMP           : BOARD   : '
+                      'BUILD VERSION    : BOARD ABI  '
+                      ' : TEST MODULE NAME         : TEST CASE NAME '
+                      '                                                    '
+                      ': FAILED : PASSED')
+  TABLE_HEADER_CTSV = (' BUILD BOARD NAME : '
+                       'BUILD BOARD VERSION : '
                        'CTS VERIFIER VERSION')
   def __init__(self):
     self.build_info_list = []
@@ -141,8 +143,9 @@ class UploadUtils(object):
           ('{:^%s}'%self.SPACE_COUNT_CTS_BUILD_VERSION).format(item[2]),
           ('{:>%s}'%self.SPACE_COUNT_CTS_BOARD_ABI).format(item[3]),
           ('{:^%s}'%self.SPACE_COUNT_PACKAGE_NAME).format(item[4]),
-          ('{:<%s}'%self.SPACE_COUNT_FAILED_TESTS).format(item[5]),
-          ('{:<%s}'%self.SPACE_COUNT_PASSED_TESTS).format(item[6]))
+          ('{:<%s}'%self.SPACE_COUNT_TEST_NAME).format(item[5]),
+          ('{:<%s}'%self.SPACE_COUNT_FAILED_TESTS).format(item[6]),
+          ('{:<%s}'%self.SPACE_COUNT_PASSED_TESTS).format(item[7]))
 
   def GetXmlTagNamesCtsv(self):
     """Get xml tag names.
@@ -150,61 +153,51 @@ class UploadUtils(object):
     Returns:
       tag_list: List of xml tag names.
     """
-    BUILD_N = 'Build'
-    RESULT = 'Result'
-    SUITE_VERSION = 'suite_version'
-    BUILD_BOARD = 'build_board'
-    BUILD_ID_N = 'build_id'
-    TEST = 'Test'
-    return [BUILD_N,
-            RESULT,
-            SUITE_VERSION,
-            BUILD_BOARD,
-            BUILD_ID_N,
-            TEST]
+    BUILD_N_XML_TAG = 'Build'
+    RESULT_XML_TAG = 'Result'
+    SUITE_VERSION_XML_TAG = 'suite_version'
+    BUILD_BOARD_XML_TAG = 'build_board'
+    BUILD_ID_N_XML_TAG = 'build_id'
+    TEST_XML_TAG = 'Test'
+    return [BUILD_N_XML_TAG,
+            RESULT_XML_TAG,
+            SUITE_VERSION_XML_TAG,
+            BUILD_BOARD_XML_TAG,
+            BUILD_ID_N_XML_TAG,
+            TEST_XML_TAG]
 
-  def GetXmlTagNamesCts(self, test_result_filename):
-    """Get xml tag names from M/N test result xml file.
+  def GetXmlTagNamesCts(self):
+    """Get xml tag names from test result xml file.
 
     Args:
-      test_result_filename: M/N Build Test Result file name.
+      test_result_filename: Build Test Result file name.
 
     Returns:
       tag_list: List of xml tag names.
     """
-    TEST_RESULT_FILENAME_M_BUILD = 'testResult.xml'
-    SUMMARY = 'Summary'
-    BUILD_M = 'BuildInfo'
-    BUILD_N = 'Build'
-    BUILD_BOARD_VERSION = 'build_board'
-    BUILD_ID_M = 'buildID'
-    BUILD_ID_N = 'build_id'
-    TEST_PACKAGE_LIST_M = 'TestPackage'
-    TEST_PACKAGE_LIST_N = 'Module'
-    TEST_PACKAGE_NAME_M = 'appPackageName'
-    TEST_PACKAGE_NAME_N = 'name'
-    BUILD_ABI_TYPE = 'abi'
-    FAILED = 'failed'
-    PASSED = 'pass'
-    if test_result_filename == TEST_RESULT_FILENAME_M_BUILD:
-      BUILD_VERSION = BUILD_M
-      BUILD_ID_TYPE = BUILD_ID_M
-      TEST_PACKAGE_LIST_VERSION = TEST_PACKAGE_LIST_M
-      TEST_PACKAGE_NAME_VERSION = TEST_PACKAGE_NAME_M
-    else:
-      BUILD_VERSION = BUILD_N
-      BUILD_ID_TYPE = BUILD_ID_N
-      TEST_PACKAGE_LIST_VERSION = TEST_PACKAGE_LIST_N
-      TEST_PACKAGE_NAME_VERSION = TEST_PACKAGE_NAME_N
-    return [SUMMARY,
-            BUILD_VERSION,
-            BUILD_BOARD_VERSION,
-            BUILD_ID_TYPE,
-            TEST_PACKAGE_LIST_VERSION,
-            TEST_PACKAGE_NAME_VERSION,
-            BUILD_ABI_TYPE,
-            FAILED,
-            PASSED]
+    SUMMARY_XML_TAG = 'Summary'
+    BUILD_N_XML_TAG = 'Build'
+    BUILD_BOARD_VERSION_XML_TAG = 'build_board'
+    BUILD_ID_N_XML_TAG = 'build_id'
+    TEST_PACKAGE_LIST_N_XML_TAG = 'Module'
+    TEST_PACKAGE_NAME_N_XML_TAG = 'name'
+    BUILD_ABI_TYPE_XML_TAG = 'abi'
+    FAILED_XML_TAG = 'failed'
+    PASSED_XML_TAG = 'pass'
+    TEST_XML_TAG = 'Test'
+    NAME_XML_TAG = 'name'
+
+    return [SUMMARY_XML_TAG,
+            BUILD_N_XML_TAG,
+            BUILD_BOARD_VERSION_XML_TAG,
+            BUILD_ID_N_XML_TAG,
+            TEST_PACKAGE_LIST_N_XML_TAG,
+            TEST_PACKAGE_NAME_N_XML_TAG,
+            BUILD_ABI_TYPE_XML_TAG,
+            FAILED_XML_TAG,
+            PASSED_XML_TAG,
+            TEST_XML_TAG,
+            NAME_XML_TAG]
 
   def UpdateBuildInfoList(self, obj):
     """Appends object to list.

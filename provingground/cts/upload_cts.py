@@ -83,7 +83,7 @@ class UploadCts(UploadUtils):
 
 
   def ParseXmlFile(self, abs_input_file_path, test_result_filename, dir_path):
-    """Gets build information for M or N Builds.
+    """Gets build information from test_result.xml file.
 
     Parses the test result xml file to obtain build information. Adds build
     information to a list. Handles Untested tests if they exist. Untested
@@ -93,13 +93,13 @@ class UploadCts(UploadUtils):
     Args:
       abs_input_file_path: Absolute input file path.
                            Eg: ~/Downloads/Manual/2017.09.22_14.27.09.zip
-      test_result_filename: M/N build test result file name.
-                            Eg: testResult.xml(M) or test_result.xml(N)
+      test_result_filename: test result file name.
+                            Eg: test_result.xml
       dir_path: Results directory path.
                 Eg: ~/Downloads/Manual
     """
-    self.GetXmlTagNamesCts(test_result_filename)
-    tag_list = self.GetXmlTagNamesCts(test_result_filename)
+    self.GetXmlTagNamesCts()
+    tag_list = self.GetXmlTagNamesCts()
     summary = tag_list[0]
     build_version = tag_list[1]
     build_board_version = tag_list[2]
@@ -109,6 +109,8 @@ class UploadCts(UploadUtils):
     build_abi_type = tag_list[6]
     failed = tag_list[7]
     passed = tag_list[8]
+    test = tag_list[9]
+    name = tag_list[10]
     split_file_list = self.SplitFileName(abs_input_file_path)
     basename = split_file_list[1]
     full_base_name = os.path.join(dir_path, basename)
@@ -123,6 +125,7 @@ class UploadCts(UploadUtils):
     summary = xml_doc.getElementsByTagName(summary)
     build_info = xml_doc.getElementsByTagName(build_version)
     test_package_list = xml_doc.getElementsByTagName(test_package_list)
+    test = xml_doc.getElementsByTagName(test)
     if not build_info:
       self.UpdateBuildInfoList([timestamp,
                                 'null',
@@ -157,19 +160,20 @@ class UploadCts(UploadUtils):
       build_abi = test_package_list[0].attributes[build_abi_type].value
       failed = summary[0].attributes[failed].value
       passed = summary[0].attributes[passed].value
+      test = test[0].attributes[name].value
       self.UpdateBuildInfoList([timestamp,
                                 build_board,
                                 build_id,
                                 build_abi,
                                 test_package,
+                                test,
                                 failed,
                                 passed])
 
   def ProcessFilesToUpload(self, input_build_id, dir_path):
     """Process Files to Upload to CTS and APFE Buckets.
 
-    Checks if Test Result File has M build or N Build and parses the
-    corresponding xml file to obtain build information.Checks for file
+    Parses the test_result.xml file to obtain build information.Checks for file
     validity by comparing with provided input BuildID. Pushes valid files to
     appropriate folders to upload to APFE and CTS buckets.Pushes invalid
     files to Obsolete Folder.Pushes untested files if any to UnTested
@@ -180,28 +184,15 @@ class UploadCts(UploadUtils):
       dir_path: Results directory path.
     """
     test_result_filename_n_build = 'test_result.xml'
-    test_result_filename_m_build = 'testResult.xml'
     build_id = ' '
     item = ' '
     for the_file in os.listdir(dir_path):
       if the_file.endswith('.zip'):
         full_file_path = os.path.join(dir_path, the_file)
         self.ExtractZipFile(full_file_path, dir_path)
-        split_file_list = self.SplitFileName(full_file_path)
-        basename = split_file_list[1]
-        full_base_name = os.path.join(dir_path, basename)
-        src_file = os.path.join(full_base_name,
-                                test_result_filename_m_build)
-        is_m_build = os.path.isfile(src_file)
-        if is_m_build is True:
-          self.ParseXmlFile(full_file_path,
-                            test_result_filename_m_build,
-                            dir_path)
-
-        else:
-          self.ParseXmlFile(full_file_path,
-                            test_result_filename_n_build,
-                            dir_path)
+        self.ParseXmlFile(full_file_path,
+                          test_result_filename_n_build,
+                          dir_path)
 
         for item in self.build_info_list:
           build_id = item[2]
@@ -255,7 +246,7 @@ def main(argv):
                       help='upload_cts.py <build_id> <results_dir_path>')
   args = parser.parse_args()
 
-  cts = UploadCts(args.build_id,args.dir_path)
+  cts = UploadCts(args.build_id, args.dir_path)
 
   if len(sys.argv) == 1:
     parser.print_help()
