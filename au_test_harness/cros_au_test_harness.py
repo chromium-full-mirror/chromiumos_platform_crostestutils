@@ -21,6 +21,7 @@ import pickle
 import sys
 import tempfile
 import unittest
+import errno
 
 import constants
 sys.path.append(constants.CROSUTILS_LIB_DIR)
@@ -236,8 +237,11 @@ def main():
   # Create download folder for payloads for testing.
   download_folder = os.path.join(os.path.realpath(os.path.curdir),
                                  'latest_download')
-  if not os.path.exists(download_folder):
+  try:
     os.makedirs(download_folder)
+  except OSError as e:
+    if e.errno != errno.EEXIST:
+      raise
 
   with sudo.SudoKeepAlive():
     au_worker.AUWorker.SetUpdateCache(update_cache)
