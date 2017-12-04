@@ -9,7 +9,7 @@
 
 # Sample content of conf file
 cat <<EOF > /dev/null
-# name of the board
+# name of the board or family
 BOARD="veyron_jerry"
 # Directory where you run cros_sdk
 CHROMIUMOS_DIR="/disk2/chromiumos3/"
@@ -21,6 +21,9 @@ LOGS="/u/dchan/Downloads/"
 # DUT ip address
 DUT_IP="100.96.48.138"
 
+# The following are not always required.
+# If testing a unibuild image, the model must be specified.
+# MODEL="robo360"
 # get_payload uses different name for board.
 # BOARD_PAYLOAD="veyron-jerry"
 # If you want to bypass the default get_payloads.par
@@ -63,7 +66,7 @@ BIOS_VER=$BIOS_VER
 cd ~/trunk/src/platform/dev/
 
 git log fm_and_key_version_test_prep.sh \
-  | grep b681c97226e4e485823e391413208eaa61563291 > /dev/null
+  | grep I1f1c5bb2045c7d121182d13c6f20b1dd4d5c6f6a > /dev/null
 if [ \$? -ne 0 ]; then
   echo =======================================================
   echo Your fm_and_key_version_test_prep.sh does not contain the
@@ -73,6 +76,9 @@ if [ \$? -ne 0 ]; then
 fi
 echo Running from chroot \$(pwd)
 cmd="./fm_and_key_version_test_prep.sh -b $BOARD_PAYLOAD -i /tmp/chromiumos_test_image.bin -f $BIOS_VER -s /tmp/image.bin -v $BIOS_STR"
+if [[ -n "${MODEL}" ]]; then
+  cmd+=" -m ${MODEL}"
+fi
 \$cmd > /tmp/fm_and_key.out 2>&1
 
 PAYLOAD_BIN="/tmp/key_increment_working_folder/bios/${BOARD_PAYLOAD}_${BIOS_VER}.1_signed.bin"
