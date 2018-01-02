@@ -7,6 +7,8 @@
 # script to automate the setup steps for 1.6.8 Key increment testing test case
 #
 
+# TODO(kmshelton): Reimplement as an autotest or tast (go/tast) test.
+
 # Sample content of conf file
 cat <<EOF > /dev/null
 # name of the board or family
@@ -479,6 +481,21 @@ recover_device()
 
 }
 
+log_gbb_flags()
+{
+  cd $CHROMIUMOS_DIR
+
+  GBB_FLAGS=$(cros_sdk futility gbb --flags $BIOS)
+  log "GBB flags are $GBB_FLAGS"
+
+  if [ "flags: 0x00000039" == "${GBB_FLAGS}" ];
+  then log "GBB flags detected as 0x39, which is typical for firmware qual \
+  DUTs.";
+  else log "GBB flags not detected to be the typical firmware qual DUT value \
+  (0x39), unexpected behaviors may occur."
+  fi
+}
+
 
 #----------------------------------------------------------------------
 # MAIN
@@ -554,6 +571,8 @@ fi
 log Board name: $BOARD
 log Board prepartion name: $BOARD_PAYLOAD
 log Will use chroot: $CHROMIUMOS_DIR
+
+log_gbb_flags
 
 # directory name in storage
 STORE_DIR=${BOARD}_keyinc_fw$(sed 's/\./_/g' <<<$BIOS_VER)_$USER
