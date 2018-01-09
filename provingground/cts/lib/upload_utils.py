@@ -215,19 +215,36 @@ class UploadUtils(object):
       dir_path: Results directory path.
     """
     build_board = ''
-    build_id = ''
     split_file_list = self.SplitFileName(filename)
     base = split_file_list[0]
     build_board = self.build_info_list[-1][1]
-    build_id = self.build_info_list[-1][2]
+    build_id_folder = self.build_info_list[-1][2]
     release_folder = '%s-release' % build_board
-    build_folder = '%s' % build_id
     manual_folder = 'manual'
-    apfe_path = os.path.join(dir_path, release_folder, build_folder,
+    apfe_path = os.path.join(dir_path, release_folder, build_id_folder,
                              manual_folder)
     if not os.path.exists(apfe_path):
       os.makedirs(apfe_path)
     self.CopyFileToDestination(dir_path, base, apfe_path, base)
+
+  def CreateCtsvApfeFolder(self, filename, dir_path):
+    """Creates hierarchy for uploading CTS-V result files to APFE bucket.
+
+    Args:
+      filename: Valid file to upload to APFE folder.
+      dir_path: Results directory path.
+    """
+    build_board = ''
+    split_file_list = self.SplitFileName(filename)
+    base = split_file_list[0]
+    build_board = self.build_info_list[-1][1]
+    build_id_folder = self.build_info_list[-1][2]
+    release_folder = '%s-release' % build_board
+    apfe_path = os.path.join(dir_path, release_folder, build_id_folder)
+    if not os.path.exists(apfe_path):
+      os.makedirs(apfe_path)
+    self.CopyFileToDestination(dir_path, base, apfe_path, base)
+
 
   def CreateCtsFolder(self, filename, dir_path):
     """Creates hierarchy for upload to CTS Dashboard bucket.

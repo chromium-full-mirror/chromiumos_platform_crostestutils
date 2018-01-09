@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""This script can be used to upload CTS Verifier results to CTS Dashboard."""
+"""This script uploads CTS Verifier results to CTS and APFE gs:// buckets."""
 
 from __future__ import print_function
 from lib.upload_utils import UploadUtils
@@ -63,16 +63,28 @@ class UploadCtsVerifier(UploadUtils):
     print('\n')
 
   def PrintGsutilLinks(self, dir_path):
-    """Prints gsutil links to upload results to CTS-V dashboard bucket.
+    """Prints gsutil links to upload results to CTS dashboard and APFE buckets.
 
     Args:
       dir_path: Results directory path.
     """
     for item in self.build_info_list:
-      gsutil_msg = ('gsutil cp -r {0}/{1}_{2}/ '
-                    'gs://chromeos-cts-results/ctsVerifier'
-                    .format(dir_path, item[2], item[1]))
-      print(self.BOLD + self.C_PURPLE + gsutil_msg + self.BOLD + self.C_END)
+      gsutil_msg_apfe = ('gsutil cp -r {0}/{1}-release/ '
+                         'gs://chromeos-ctsverifier-results/'
+                         .format(dir_path, item[1]))
+      gsutil_msg_cts = ('gsutil cp -r {0}/{1}_{2}/ '
+                        'gs://chromeos-cts-results/ctsVerifier'
+                        .format(dir_path, item[2], item[1]))
+      print(self.BOLD +
+            self.C_PURPLE +
+            gsutil_msg_cts +
+            self.BOLD +
+            self.C_END)
+      print(self.BOLD +
+            self.C_PURPLE +
+            gsutil_msg_apfe +
+            self.BOLD +
+            self.C_END)
 
   def PrintIfAllTestsPassed(self):
     """Print message to terminal if all tests have passed."""
@@ -163,6 +175,7 @@ class UploadCtsVerifier(UploadUtils):
         if build_id == input_build_id:
           self.valid_files_exist = True
           self.failed_tests_exist = False
+          self.CreateCtsvApfeFolder(full_file, dir_path)
           self.CreateCtsFolder(full_file, dir_path)
           self.PrintBuildInfoList()
           self.PrintFailedTestResults(tests)
