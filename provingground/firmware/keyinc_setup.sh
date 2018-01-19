@@ -37,10 +37,13 @@ DUT_IP="100.96.48.138"
 # CHANNEL=dev
 EOF
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
 
 log()
 {
-  echo -e $(date '+[%H%M%S-%m%d]') "$*"
+  echo -e $(date '+[%H%M%S-%m%d]') "${GREEN}$*${NC}"
 }
 
 generate_payload()
@@ -324,7 +327,7 @@ EOF
 
 exit_on_error()
 {
-  echo $(date '+[%H%M%S-%m%d]') ERROR:- "$*"
+  echo -e $(date '+[%H%M%S-%m%d]') "${RED}ERROR:- $*${NC}"
   exit 1
 }
 
@@ -395,6 +398,33 @@ crossystem_verification()
 
 }
 
+check_write_protects()
+{
+  log "---------------------WRITE PROTECTS ARE------------------------"
+  cat <<EOF | ssh -T root@$DUT_IP
+  crossystem 2>/dev/null |grep ^wpsw_
+  echo -n "HOST WRITE PROTECT IS: "
+  echo \$(flashrom -p host --wp-status 2>/dev/null | grep "write protect" \
+          | tr '\n' ' ' | awk '{print \$5, \$(NF-1), \$NF}')
+
+  ectool version > /dev/null 2>&1
+  if [ \$? -eq 0 ]; then
+    echo -n "EC WRITE PROTECT IS:   "
+    echo \$(flashrom -p ec --wp-status 2>/dev/null |grep "write protect" \
+            | tr '\n' ' ' | awk '{print \$5, \$(NF-1), \$NF}')
+  fi
+
+  ectool --dev=1 version > /dev/null 2>&1
+  if [ \$? -eq 0 ]; then
+    echo -n "PD WRITE PROTECT IS:   "
+    echo \$(flashrom -p ec:dev=1 --wp-status 2>/dev/null |grep "write protect" \
+            | tr '\n' ' ' | awk '{print \$5, \$(NF-1), \$NF}')
+  fi
+
+EOF
+  log "---------------------------------------------------------------"
+}
+
 
 verify_keyincrement()
 {
@@ -420,6 +450,7 @@ verify_keyincrement()
 
     sleep 45
     crossystem_verification $auto_update
+    check_write_protects
     sleep 60
 
     ssh root@$DUT_IP "grep '$SUCCESSFUL_UPDATE_TOKEN' $UPDATE_ENGINE_LOG"
@@ -436,6 +467,7 @@ verify_keyincrement()
     ssh root@$DUT_IP "reboot"
 
     sleep 90
+    check_write_protects
     get_logs $auto_update "Autoupdate $auto_update completed"
 
   done
