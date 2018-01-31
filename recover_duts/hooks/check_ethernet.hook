@@ -268,7 +268,16 @@ main() {
 
   critical_msg "All ethernet recovery methods have failed. Rebooting."
   sync
-  (sleep 5 && reboot) &
+
+  # Give powerd a chance to reboot via the standard path (and log messages that
+  # are helpful for debugging) before calling 'reboot' directly.
+  (sleep 5;
+   dbus-send --system --type=method_call --dest=org.chromium.PowerManager \
+      /org/chromium/PowerManager org.chromium.PowerManager.RequestRestart \
+      int32:2 string:'recover_duts check_ethernet hook failed';
+   sleep 30;
+   reboot) &
+
   return 1
 }
 
