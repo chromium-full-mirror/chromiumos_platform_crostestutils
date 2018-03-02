@@ -39,6 +39,14 @@ class TestError(Exception):
 
 class DevModeTest(object):
   """Wrapper for dev mode tests."""
+
+  # qemu hardcodes 10.0.2.2 as the host from the guest's point of view
+  # https://wiki.qemu.org/Documentation/Networking#User_Networking_.28SLIRP.29
+  # When the host's eth0 IP address is also 10.0.2.*, and the guest tries to
+  # access it, the requests will be handled by qemu and never be seen by the
+  # host. Instead, let the guest always connect to 10.0.2.2.
+  HOST_IP_ADDRESS = '10.0.2.2'
+
   def __init__(self, image_path, board, binhost):
     """Initializes DevModeTest.
 
@@ -115,7 +123,8 @@ class DevModeTest(object):
       logging.info('Starting the devserver.')
       self.devserver = dev_server_wrapper.DevServerWrapper()
       self.devserver.Start()
-      self.binhost = self.devserver.GetURL(
+      self.binhost = self.devserver.GetDevServerURL(
+          ip=self.HOST_IP_ADDRESS, port=self.devserver.port,
           sub_dir='static/pkgroot/%s/packages' % self.board)
 
     logging.info('Using binhost %s', self.binhost)
@@ -144,7 +153,8 @@ class DevModeTest(object):
     try:
       self.device.RunCommand(
           ['gmerge', 'gmerge', '--accept_stable', '--usepkg',
-           '--devserver_url', self.devserver.GetURL(),
+           '--devserver_url', self.devserver.GetDevServerURL(
+               ip=self.HOST_IP_ADDRESS, port=self.devserver.port),
            '--board', self.board])
     except (cros_build_lib.RunCommandError,
             remote_access.SSHConnectionError) as e:
