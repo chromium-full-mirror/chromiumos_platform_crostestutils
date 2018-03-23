@@ -13,7 +13,6 @@ import os
 import shutil
 import zipfile
 
-
 class UploadUtils(object):
   """Internal Helper for CTS and CTS Verifier Upload scripts."""
 
@@ -43,9 +42,12 @@ class UploadUtils(object):
                        'CTS VERIFIER VERSION')
   def __init__(self):
     self.build_info_list = []
+    self.passed_list = []
+    self.failed_list = []
     self.obsolete_file_count = 0
     self.untested_file_count = 0
     self.build_mismatch_file_count = 0
+    self.found = 0
 
   def PrintObsoleteFolderCount(self):
     """Prints obsolete file count in case of build id mismatch."""
@@ -126,7 +128,19 @@ class UploadUtils(object):
           ('{:>%s}'%self.SPACE_COUNT_CTSV_BUILD_VERSION).format(item[2]),
           ('{:>%s}'%self.SPACE_COUNT_VERIFIER_VERSION).format(item[3]))
 
-  def PrintFormattedDataCts(self, item):
+  def SegregateCtsDataToPrint(self, item):
+    """Segregates passed and failed results into two separate lists.
+
+    Args:
+       item: Board information.
+    """
+    if item[7] == "1":
+      self.passed_list.append(item)
+      self.PrintCtsResults(item)
+    else:
+      self.failed_list.append(item)
+
+  def PrintCtsResults(self, item):
     """Prints build information in a tabular form to the terminal.
 
     Sample table printed to terminal:

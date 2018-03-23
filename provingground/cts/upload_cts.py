@@ -42,11 +42,15 @@ class UploadCts(UploadUtils):
     self.obsolete_files_exist = False
     self.input_build_id = input_build_id
     self.dir_path = dir_path
+    self.nextelem = 0
+    self.idx = 0
 
   def PrintBuildInfoList(self):
     """Sorts build information by build board and prints to the terminal."""
     self.build_info_list.sort(key=lambda x: x[1])
     for item in self.build_info_list:
+      self.idx = (self.idx + 1) % len(self.build_info_list)
+      self.nextelem = self.build_info_list[self.idx]
       if self.current_test_board_name != item[1]:
         title_msg = 'List of files for %s' % item[1]
         table_column_header = self.TABLE_HEADER_CTS
@@ -63,7 +67,35 @@ class UploadCts(UploadUtils):
               self.C_END)
 
         self.current_test_board_name = item[1]
-      self.PrintFormattedDataCts(item)
+        if self.failed_list:
+          self.failed_list.clear()
+        if self.passed_list:
+          self.passed_list.clear()
+
+      self.SegregateCtsDataToPrint(item)
+      #Print failed result if there is only one item in the list.
+      if len(self.build_info_list) == 1:
+        if self.failed_list:
+          for i in range(len(self.failed_list)):
+            self.PrintCtsResults(self.failed_list[i])
+
+      #If there is a mix of passed & failed results, print only valid failures.
+      if self.failed_list:
+        if self.passed_list:
+        #If a test has passed at least once, the results are not printed.
+          for i in range(len(self.failed_list)):
+            for j in range(len(self.passed_list)):
+              if(self.failed_list[i][1] == self.passed_list[j][1] and
+                 self.failed_list[i][3] == self.passed_list[j][3] and
+                 self.failed_list[i][5] == self.passed_list[j][5]):
+                self.found = 1
+              else:
+                if self.found != 1:
+                  self.found = 0
+          #Check no more results to parse for board and print valid failure.
+          if self.found == 0 and self.nextelem[1] != item[1]:
+            for i in range(len(self.failed_list)):
+              self.PrintCtsResults(self.failed_list[i])
     print('\n')
 
   def PrintGsutilLinks(self, dir_path):
