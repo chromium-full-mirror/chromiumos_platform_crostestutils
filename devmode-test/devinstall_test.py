@@ -30,6 +30,7 @@ from chromite.lib import dev_server_wrapper
 from chromite.lib import osutils
 from chromite.lib import remote_access
 from chromite.lib import vm
+from chromite.scripts import cros_vm
 
 from crostestutils.lib import mount_helper
 from crostestutils.lib import test_helper
@@ -67,7 +68,6 @@ class DevModeTest(object):
     self.working_image_path = None
     self.devserver = None
     self.vm = None
-    self.device = None
 
   def Cleanup(self):
     """Cleans up any state at the end of the test."""
@@ -75,9 +75,6 @@ class DevModeTest(object):
       if self.devserver:
         self.devserver.Stop()
       self.devserver = None
-      if self.device:
-        self.device.Cleanup()
-      self.device = None
       if self.vm:
         self.vm.Stop()
       self.vm = None
@@ -114,12 +111,12 @@ class DevModeTest(object):
     logging.info('Wiping /usr/local/bin from the image.')
     self._WipeDevInstall()
 
-    self.vm = vm.VMInstance(self.working_image_path, tempdir=self.tmpdir)
-    logging.info('Starting the vm on port %d.', self.vm.port)
+    vm_opts = cros_vm.VM.GetParser().parse_args(
+        ['--image-path', self.working_image_path, '--vm-dir',
+         os.path.join(self.tmpdir, 'cros_vm')])
+    self.vm = cros_vm.VM(vm_opts)
+    logging.info('Starting the vm on port %d.', self.vm.ssh_port)
     self.vm.Start()
-
-    self.device = remote_access.ChromiumOSDevice(
-        remote_access.LOCALHOST, port=self.vm.port, base_dir=self.tmpdir)
 
     if not self.binhost:
       logging.info('Starting the devserver.')
@@ -135,13 +132,13 @@ class DevModeTest(object):
     """Tests that we can run dev-install and have python work afterwards."""
     try:
       logging.info('Running dev install in the vm.')
-      self.device.RunCommand(
+      self.vm.RemoteCommand(
           ['bash', '-l', '-c',
            '"/usr/bin/dev_install --yes --binhost %s"' % self.binhost])
 
       logging.info('Verifying that python works on the image.')
-      self.device.RunCommand(['sudo', '-u', 'chronos', '--', 'python', '-c',
-                              '"print \'hello world\'"'])
+      self.vm.RemoteCommand(['sudo', '-u', 'chronos', '--', 'python', '-c',
+                             '"print \'hello world\'"'])
     except (cros_build_lib.RunCommandError,
             remote_access.SSHConnectionError) as e:
       self.devserver.PrintLog()
@@ -153,7 +150,7 @@ class DevModeTest(object):
     """Evaluates whether the test passed or failed."""
     logging.info('Testing that gmerge works on the image after dev install.')
     try:
-      self.device.RunCommand(
+      self.vm.RemoteCommand(
           ['gmerge', 'gmerge', '--accept_stable', '--usepkg',
            '--devserver_url', self.devserver.GetDevServerURL(
                ip=self.HOST_IP_ADDRESS, port=self.devserver.port),
