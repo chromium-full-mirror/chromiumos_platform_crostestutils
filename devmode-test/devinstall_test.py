@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 #
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -12,8 +12,9 @@ all of the stateful partition. Once done, runs dev_install to restore the
 stateful partition and then runs gmerge.
 """
 
-import logging
-import optparse
+from __future__ import print_function
+
+import argparse
 import os
 import shutil
 import sys
@@ -24,6 +25,7 @@ sys.path.append(constants.SOURCE_ROOT)
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 
 from chromite.lib import cros_build_lib
+from chromite.lib import cros_logging as logging
 from chromite.lib import dev_server_wrapper
 from chromite.lib import osutils
 from chromite.lib import remote_access
@@ -161,37 +163,30 @@ class DevModeTest(object):
       logging.error('gmerge test failed. See log for details')
       raise TestError('gmerge test failed with: %s' % str(e))
 
+  def Run(self):
+    try:
+      self.PrepareTest()
+      self.TestDevInstall()
+      self.TestGmerge()
+      logging.info('All tests passed.')
+    finally:
+      self.Cleanup()
+
 
 def main():
-  usage = ('%s <board> <path_to_[test|vm]_image>. '
-           'See --help for more options' % os.path.basename(sys.argv[0]))
-  parser = optparse.OptionParser(usage)
-  parser.add_option('--binhost', metavar='URL',
-                    help='binhost override. By default, starts up a devserver '
-                         'and uses it as the binhost.')
-  parser.add_option('-v', '--verbose', default=False, action='store_true',
-                    help='Print out added debugging information')
-
-  (options, args) = parser.parse_args()
-
-  if len(args) != 2:
-    parser.print_usage()
-    parser.error('Need board and path to test image.')
-
-  board = args[0]
-  image_path = os.path.realpath(args[1])
+  parser = argparse.ArgumentParser(description=__doc__)
+  parser.add_argument('--binhost', metavar='URL',
+                      help='binhost override. By default, starts up a devserver'
+                      ' and uses it as the binhost.')
+  parser.add_argument('board', nargs=1, help='board to use.')
+  parser.add_argument('image_path', nargs=1, help='path to test|vm image.')
+  parser.add_argument('-v', '--verbose', default=False, action='store_true',
+                      help='Print out added debugging information')
+  options = parser.parse_args()
 
   test_helper.SetupCommonLoggingFormat(verbose=options.verbose)
-
-  test = DevModeTest(image_path, board, options.binhost)
-  try:
-    test.PrepareTest()
-    test.TestDevInstall()
-    test.TestGmerge()
-    logging.info('All tests passed.')
-  finally:
-    test.Cleanup()
-
+  DevModeTest(os.path.realpath(options.image_path[0]), options.board[0],
+              options.binhost).Run()
 
 if __name__ == '__main__':
   main()
