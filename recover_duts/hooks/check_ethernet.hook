@@ -129,6 +129,19 @@ find_ssh_client() {
                        if (a[1] != "127.0.0.1") print a[1]}'
 }
 
+# Return the IP address of a neighbor reachable via ethernet
+find_ethernet_neighbor() {
+  local eth
+  local neighbor_ip
+
+  for eth in $(find_ethernet_interfaces); do
+    neighbor_ip=$(ip -4 neigh show dev ${eth} |
+                  awk '/REACHABLE|DELAY|STALE/ {print $1; exit}')
+    [ -n "${neighbor_ip}" ] && echo ${neighbor_ip} && return 0
+  done
+  return 1
+}
+
 # Try to find a connected SSH client (our autotest server) and ping it
 ping_controlling_server() {
   local default_gateway="$(get_default_gateway)" || default_gateway=
@@ -139,6 +152,12 @@ ping_controlling_server() {
   local ssh_client="$(find_ssh_client)" || ssh_client=
   if [ -n "${ssh_client}" ]; then
     do_ping ${ssh_client} && return 0
+  fi
+
+  # Last attempt: any recently seen neighbor
+  local neighbor="$(find_ethernet_neighbor)" || neighbor=
+  if [ -n "${neighbor}" ]; then
+    do_ping ${neighbor} && return 0
   fi
   return 1
 }
