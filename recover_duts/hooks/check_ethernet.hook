@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2039
 #
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -15,7 +16,7 @@ fi
 SHILL_START_LOCK_PATH="/var/lock/shill-start.lock"
 
 # See code in src/thirdparty/autotest/files/client/cros/power_suspend.py
-PAUSE_FILE="/run/autotest_pause_ethernet_hook"
+PAUSE_FILE=/run/autotest_pause_ethernet_hook
 paused_time=0
 
 
@@ -25,18 +26,19 @@ paused_time=0
 # TODO(tbroch) Relocate this to common hook library if/when there's more than
 # one hook.
 critical_msg() {
-  echo $(date --rfc-3339=seconds) " $@" >&2
-  logger -t "$(basename $0)" -- "$@"
+  echo "$(date --rfc-3339=seconds)  $*" >&2
+  logger -t "$(basename "$0")" -- "$*"
 }
 
 info_msg() {
-  echo $(date --rfc-3339=seconds) " $@" >&2
+  echo "$(date --rfc-3339=seconds)  $*" >&2
 }
 
 # Returns the default gateway.
 get_default_gateway() {
-  local ip_route="$(ip route get 1.0.0.0)"
-  echo ${ip_route} | head -n 1 | cut -f 3 -d ' '
+  local ip_route
+  ip_route="$(ip route get 1.0.0.0)"
+  echo "${ip_route}" | head -n 1 | cut -f 3 -d ' '
 }
 
 rescan_usb_hubs() {
@@ -44,12 +46,12 @@ rescan_usb_hubs() {
   local portnum
   local usbhub=/sys/bus/usb/drivers/hub
 
-  for port in ${usbhub}/[0-9]*-0:1.0; do
-    critical_msg "Rescanning  $port"
-    portnum=$(basename "${port}")
-    echo ${portnum} > ${usbhub}/unbind
+  for port in "${usbhub}"/[0-9]*-0:1.0; do
+    critical_msg "Rescanning  ${port}"
+    portnum="$(basename "${port}")"
+    echo "${portnum}" > "${usbhub}"/unbind
     sleep 1
-    echo ${portnum} > ${usbhub}/bind
+    echo "${portnum}" > "${usbhub}"/bind
     # USB needs a bit of time to scan the "hub"
     sleep 3
   done
@@ -60,7 +62,7 @@ search_devices() {
   local device
 
   for device_path in /sys/class/net/*; do
-    device=$(basename "${device_path}")
+    device="$(basename "${device_path}")"
 
     # lab interconnect is full-duplex and tells us so.
     # devices w/o link won't get listed here
@@ -75,7 +77,7 @@ search_devices() {
     esac
 
     # ignore virtual devices (e.g. lxcbr0 or arcbr0)
-    if [ "$(cat ${device_path}/addr_assign_type 2>&1)" != "0" ] ; then
+    if [ "$(cat "${device_path}/addr_assign_type" 2>&1)" != "0" ] ; then
       continue
     fi
 
@@ -90,8 +92,9 @@ search_devices() {
 
 # Shows the list of Ethernet interfaces found on the system.
 find_ethernet_interfaces() {
-  local interfaces=$(search_devices)
+  local interfaces
 
+  interfaces=$(search_devices)
   if [ -z "${interfaces}" ] ; then
     # didn't find any eth devices.
     # Some possible causes are:
@@ -105,7 +108,7 @@ find_ethernet_interfaces() {
     # check again
     interfaces=$(search_devices)
   fi
-  echo $interfaces
+  echo "$interfaces"
 }
 
 
@@ -116,7 +119,7 @@ do_ping() {
   local eth
 
   for eth in $(find_ethernet_interfaces); do
-    ping -q -I ${eth} -c 9 ${ip_addr} && return 0
+    ping -q -I "${eth}" -c 9 "${ip_addr}" && return 0
   done
 
   return 1
@@ -125,8 +128,8 @@ do_ping() {
 # Restart all our ethernet devices and restart shill.
 # Return the remote IP address of the first established SSH connection
 find_ssh_client() {
-  netstat -lanp | awk '/tcp.*:22 .*ESTABLISHED.*/ {split($5,a,":"); \
-                       if (a[1] != "127.0.0.1") print a[1]}'
+  netstat -lanp | awk '/tcp.*:22 .*ESTABLISHED.*/ {split($5,a,":"); '
+                       ' if (a[1] != "127.0.0.1") print a[1]}'
 }
 
 # Return the IP address of a neighbor reachable via ethernet
@@ -135,27 +138,30 @@ find_ethernet_neighbor() {
   local neighbor_ip
 
   for eth in $(find_ethernet_interfaces); do
-    neighbor_ip=$(ip -4 neigh show dev ${eth} |
+    neighbor_ip=$(ip -4 neigh show dev "${eth}" |
                   awk '/REACHABLE|DELAY|STALE/ {print $1; exit}')
-    [ -n "${neighbor_ip}" ] && echo ${neighbor_ip} && return 0
+    [ -n "${neighbor_ip}" ] && echo "${neighbor_ip}" && return 0
   done
   return 1
 }
 
 # Try to find a connected SSH client (our autotest server) and ping it
 ping_controlling_server() {
-  local default_gateway="$(get_default_gateway)" || default_gateway=
+  local default_gateway
+  default_gateway="$(get_default_gateway)" || default_gateway=
   if [ -n "${default_gateway}" ]; then
     do_ping ${default_gateway} && return 0
   fi
 
-  local ssh_client="$(find_ssh_client)" || ssh_client=
+  local ssh_client
+  ssh_client="$(find_ssh_client)" || ssh_client=
   if [ -n "${ssh_client}" ]; then
     do_ping ${ssh_client} && return 0
   fi
 
   # Last attempt: any recently seen neighbor
-  local neighbor="$(find_ethernet_neighbor)" || neighbor=
+  local neighbor
+  neighbor="$(find_ethernet_neighbor)" || neighbor=
   if [ -n "${neighbor}" ]; then
     do_ping ${neighbor} && return 0
   fi
@@ -177,7 +183,8 @@ toggle_usb_ports() {
   local device_path
   local ret=1
   for device_path in /sys/class/net/*; do
-    local usbpath=$(readlink -f "${device_path}")
+    local usbpath
+    usbpath=$(readlink -f "${device_path}")
     # Example of what usbpath is expect to look like:
     #    usbpath=/sys/devices/pci0000:00/0000:00:14.0/usb2/2-2/2-2:1.0/net/eth1
     #
@@ -226,8 +233,11 @@ pause_check_ethernet() {
     return 1
   fi
 
-  local now="$(date +%s)"
-  local start_time=$(stat -c%Z "${PAUSE_FILE}") || true
+  local now
+  local start_time
+
+  now="$(date +%s)"
+  start_time=$(stat -c%Z "${PAUSE_FILE}") || true
 
   if [ -z "${start_time}" ]; then
       return 1
@@ -265,9 +275,13 @@ main() {
     # recovery method without delay.
     "${recovery_method}" || continue
 
-    local now="$(date +%s)"
-    local start_time="${now}"
-    local method_timeout=$(( now + 30 ))
+    local now
+    local start_time
+    local method_timeout
+
+    now="$(date +%s)"
+    start_time="${now}"
+    method_timeout=$((now+30))
 
     if ! initctl status shill | grep -q running ; then
       restart_connection_manager
@@ -275,13 +289,13 @@ main() {
 
     # poll "controlling_server" until timeout
     # NB: Our Lab DHCP servers must respond in < 30 seconds.
-    while [ $now -lt $method_timeout ]; do
+    while [ "${now}" -lt "${method_timeout}" ]; do
       if ping_controlling_server; then
-        critical_msg "${recovery_method} successful after $(( now - start_time )) seconds."
+        critical_msg "${recovery_method} successful after $((now-start_time)) seconds."
         return 0
       fi
       sleep 1
-      now=$(date +%s)
+      now="$(date +%s)"
     done
   done
 
