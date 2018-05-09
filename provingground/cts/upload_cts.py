@@ -60,6 +60,7 @@ class UploadCts(UploadUtils):
               title_msg +
               self.BOLD +
               self.C_END)
+
         print(self.BOLD +
               self.C_BLACK +
               table_column_header +
@@ -71,6 +72,7 @@ class UploadCts(UploadUtils):
           self.failed_list.clear()
         if self.passed_list:
           self.passed_list.clear()
+        self.row_count = 0
 
       self.SegregateCtsDataToPrint(item)
       #Print failed result if there is only one item in the list.

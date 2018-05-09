@@ -19,6 +19,7 @@ class UploadUtils(object):
   SPACE_COUNT_CTSV_BOARD_NAME = 14
   SPACE_COUNT_CTSV_BUILD_VERSION = 22
   SPACE_COUNT_VERIFIER_VERSION = 18
+  SPACE_COUNT_ROW = 6
   SPACE_COUNT_TIMESTAMP = 17
   SPACE_COUNT_CTS_BOARD_NAME = 13
   SPACE_COUNT_CTS_BUILD_VERSION = 12
@@ -27,12 +28,15 @@ class UploadUtils(object):
   SPACE_COUNT_FAILED_TESTS = 8
   SPACE_COUNT_PASSED_TESTS = 8
   SPACE_COUNT_TEST_NAME = 70
+  TEST_PASS = '1'
+  TEST_PASS_X86_64 = '2'
+  TEST_FAIL = '1'
   C_PURPLE = '\033[95m'
   C_RED = '\033[91m'
   C_BLACK = '\033[98m'
   BOLD = '\033[1m'
   C_END = '\033[00m'
-  TABLE_HEADER_CTS = (' TIME STAMP           : BOARD   : '
+  TABLE_HEADER_CTS = ('RNO  : TIME STAMP            : BOARD    : '
                       'BUILD VERSION    : BOARD ABI  '
                       ' : TEST MODULE NAME         : TEST CASE NAME '
                       '                                                    '
@@ -48,6 +52,7 @@ class UploadUtils(object):
     self.untested_file_count = 0
     self.build_mismatch_file_count = 0
     self.found = 0
+    self.row_count = 0
 
   def PrintObsoleteFolderCount(self):
     """Prints obsolete file count in case of build id mismatch."""
@@ -134,9 +139,22 @@ class UploadUtils(object):
     Args:
        item: Board information.
     """
-    if item[7] == "1":
+    rerun = 0
+    if ((item[7] == self.TEST_PASS and
+         item[6] != self.TEST_FAIL) or
+        item[7] == self.TEST_PASS_X86_64):
       self.passed_list.append(item)
-      self.PrintCtsResults(item)
+
+      for i in range(len(self.passed_list)):
+        if(self.passed_list[i][1] == item[1] and
+           self.passed_list[i][3] == item[3] and
+           self.passed_list[i][5] == item[5]):
+          rerun = rerun + 1
+        if rerun > 1:
+          break
+      #Print valid passed result, reruns are not printed.
+      if rerun == 1:
+        self.PrintCtsResults(item)
     else:
       self.failed_list.append(item)
 
@@ -152,7 +170,9 @@ class UploadUtils(object):
     Args:
       item: Information List to be printed to terminal.
     """
-    print(('{:>%s}'%self.SPACE_COUNT_TIMESTAMP).format(item[0]),
+    self.row_count = self.row_count + 1
+    print(('{:<%i}'%self.SPACE_COUNT_ROW).format(self.row_count),
+          ('{:>%s}'%self.SPACE_COUNT_TIMESTAMP).format(item[0]),
           ('{:^%s}'%self.SPACE_COUNT_CTS_BOARD_NAME).format(item[1]),
           ('{:^%s}'%self.SPACE_COUNT_CTS_BUILD_VERSION).format(item[2]),
           ('{:>%s}'%self.SPACE_COUNT_CTS_BOARD_ABI).format(item[3]),
