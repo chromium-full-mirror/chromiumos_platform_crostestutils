@@ -10,12 +10,9 @@ test_scripts:
 install:
 	mkdir -p "${DESTDIR}/usr/bin"
 	mkdir -p "${DESTDIR}/usr/lib/crostestutils"
-	mkdir -p "${DESTDIR}/usr/share/crostestutils"
 	install -m 0644 lib/constants.py "${DESTDIR}/usr/lib/crostestutils"
 	install -m 0755 cros_run_bvt "${DESTDIR}/usr/bin"
 	install -m 0755 run_remote_tests.sh ${DESTDIR}/usr/bin
 	install -m 0755 test_that ${DESTDIR}/usr/bin
 	install -m 0755 bootperf-wrapper ${DESTDIR}/usr/bin/bootperf
 	ln ${DESTDIR}/usr/bin/bootperf ${DESTDIR}/usr/bin/showbootdata
-	install -m 0644 unit_test_black_list.txt \
-		"${DESTDIR}/usr/share/crostestutils"
