@@ -37,7 +37,6 @@ class CTest(object):
     crosutils_root: Location of crosutils.
     jobs: Numbers of threads to run in parallel.
     no_graphics: boolean: If True, disable graphics during vm test.
-    nplus1_archive_dir: Archive directory to store nplus1 payloads.
     payload_signing_key: Signs payloads with this key.
     public_key: Loads key to verify signed payloads.
     remote: ip address for real test harness run.
@@ -77,7 +76,6 @@ class CTest(object):
       self.payload_signing_key = None
 
     self.jobs = opts.jobs
-    self.nplus1_archive_dir = opts.nplus1_archive_dir
 
     # An optional ssh private key used for testing.
     self.ssh_private_key = opts.ssh_private_key
@@ -133,9 +131,6 @@ class CTest(object):
     cmd.append('--base=%s' % self.base)
     cmd.append('--board=%s' % self.board)
     cmd.append('--jobs=%d' % self.jobs)
-    if self.nplus1_archive_dir:
-      cmd.append('--nplus1')
-      cmd.append('--nplus1_archive_dir=%s' % self.nplus1_archive_dir)
 
     if full:
       cmd.append('--full_suite')
@@ -237,8 +232,6 @@ def main():
                       help='Run a quick update test. This will run a subset of '
                       'test suite after running autoupdate from target '
                       'image to itself.')
-  parser.add_argument('--nplus1_archive_dir', default=None,
-                      help='If set, directory to archive nplus1 payloads.')
   parser.add_argument('--remote', default='0.0.0.0',
                       help='For real tests, ip address of the target machine.')
   parser.add_argument('--target_image', default=None,
@@ -275,7 +268,7 @@ def main():
 
   # force absolute path for these opts, since a chdir occurs deeper in the
   # codebase.
-  for x in ('nplus1_archive_dir', 'target_image', 'test_results_root'):
+  for x in ('target_image', 'test_results_root'):
     if x == 'target_image' and opts.type == 'gce':
       # In this case |target_image| is a Google Storage path.
       continue
