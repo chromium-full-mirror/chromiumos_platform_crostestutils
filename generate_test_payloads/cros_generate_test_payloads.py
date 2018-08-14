@@ -260,10 +260,10 @@ class UpdatePayloadGenerator(object):
       logging.info(debug_message)
       try:
         with timeout_util.Timeout(constants.MAX_TIMEOUT_SECONDS):
-          cros_build_lib.SudoRunCommand(command, log_stdout_to_file=log_file,
-                                        combine_stdout_stderr=True,
-                                        enter_chroot=True, print_cmd=False,
-                                        cwd=constants.SOURCE_ROOT)
+          cros_build_lib.RunCommand(command, log_stdout_to_file=log_file,
+                                    combine_stdout_stderr=True,
+                                    enter_chroot=True, print_cmd=False,
+                                    cwd=constants.SOURCE_ROOT)
       except (timeout_util.TimeoutError, cros_build_lib.RunCommandError):
         # Print output first, then re-raise the exception.
         if os.path.isfile(log_file):
