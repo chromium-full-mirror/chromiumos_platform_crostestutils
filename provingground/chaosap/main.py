@@ -68,6 +68,37 @@ def post():
     new_device.put()
     return jsonify(result=True, id=hostname)
 
+
+@app.route('/devices/<hostname>', methods=['PUT', 'GET'])
+def edit_ap_device(hostname):
+    """Get and/or edit an AP.
+
+    curl -i -H "Content-Type: application/json" <URL>/devices/<HOSTNAME>
+
+    curl -i -H "Content-Type: application/json" -X PUT -d '{"ap_label":"<AP_LABEL>"}' \
+    <URL>/devices/<HOSTNAME>
+
+    """
+    if request.method == 'GET':
+        device_key = ndb.Key(ApDevice, hostname)
+        device = device_key.get()
+        device_js = ndb_json.dumps(device, indent=0)
+        return device_js
+
+    if request.method == 'PUT':
+        device_key = ndb.Key(ApDevice, hostname)
+        device = device_key.get()
+        if 'router_name' in request.json:
+            device.router_name = request.json['router_name']
+        if 'ap_label' in request.json:
+            device.ap_label = request.json['ap_label']
+        if 'lab_label' in request.json:
+            device.lab_label = request.json['lab_label']
+        device.put()
+        return jsonify(result=True, id=hostname, ap_label=device.ap_label, \
+               lab_label=device.lab_label, router_name=device.router_name)
+
+
 @app.route('/devices/lock', methods=['PUT'])
 def lock_devices():
     """
