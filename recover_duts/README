@@ -1,10 +1,12 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-Recover DUTS is a utility that runs on test images. It periodically runs a set
-of hooks to ensure that we can correctly connect / recover a bricked DUT
-without requiring manual recovery.
+Recover DUTS is a utility that only runs on test images. It periodically
+runs a set of hooks to ensure the DUT (Device Under Test) can correctly
+connect and attempts to programmatically recover a malfunctioning DUT.
+
+Recover DUTs is "enabled" only when /mnt/stateful/.lab_machine exists.
 
 In order to add a hook, add an executable script in the hooks/ dir that ends with
 .hook suffix. It can be written in anything that is executable by a test image --
@@ -12,4 +14,5 @@ Python, Dash script or a binary program.
 
 Hooks that fail result in logs @ /var/log/recover_duts_log.
 
-The init script for this tool is stored in platform/init.
+The init script to start recover_duts is:
+    src/platform2/init/upstart/test-init/recover_duts.conf
