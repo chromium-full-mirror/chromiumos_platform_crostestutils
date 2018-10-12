@@ -30,7 +30,7 @@ class RealAUWorker(au_worker.AUWorker):
                   proxy_port=None, payload_signing_key=None):
     """Updates a remote image using image_to_live.sh."""
     stateful_change_flag = self.GetStatefulChangeFlag(stateful_change)
-    cmd = ['%s/image_to_live.sh' % constants.CROSUTILS_DIR,
+    cmd = [os.path.join(constants.CROSTESTUTILS_DIR, 'image_to_live.sh'),
            '--remote=%s' % self.remote,
            stateful_change_flag,
            '--verify',
@@ -43,7 +43,7 @@ class RealAUWorker(au_worker.AUWorker):
                          proxy_port=None):
     """Updates a remote image using image_to_live.sh."""
     stateful_change_flag = self.GetStatefulChangeFlag(stateful_change)
-    cmd = ['%s/image_to_live.sh' % constants.CROSUTILS_DIR,
+    cmd = [os.path.join(constants.CROSTESTUTILS_DIR, 'image_to_live.sh'),
            '--payload=%s' % update_path,
            '--remote=%s' % self.remote,
            stateful_change_flag,

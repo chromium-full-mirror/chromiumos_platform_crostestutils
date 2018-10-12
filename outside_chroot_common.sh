@@ -12,5 +12,6 @@ if [ -f /etc/debian_chroot ]; then
   exit 1
 fi
 
-SCRIPT_ROOT="$(dirname "$(readlink -f "$0")")/../../scripts"
+CROSTESTUTILS_DIR="$(dirname "$(readlink -f "$0")")"
+SCRIPT_ROOT="${CROSTESTUTILS_DIR}/../../scripts"
 

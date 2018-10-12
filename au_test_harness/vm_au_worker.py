@@ -87,7 +87,7 @@ class VMAUWorker(au_worker.AUWorker):
            '--ssh-port=%s' % self._ssh_port,
            self.graphics_flag,
            '--host-cmd', '--',
-           '%s/image_to_live.sh' % constants.CROSUTILS_DIR,
+           os.path.join(constants.CROSTESTUTILS_DIR, 'image_to_live.sh'),
            '--ssh_port=%s' % self._ssh_port,
            '--noupdate_hostkey',
            '--update_log=%s' % os.path.join(log_directory, 'update_engine.log'),
