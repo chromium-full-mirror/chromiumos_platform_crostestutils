@@ -30,7 +30,8 @@ class CrosAuTestHarnessTest(unittest.TestCase):
 
   def testCheckOptionsDisallowsUndefinedType(self):
     """Verifies that CheckOptions complains about invalid type."""
-    cmd = [os.path.join(constants.CROSUTILS_DIR, 'bin', 'cros_au_test_harness'),
+    cmd = [os.path.join(constants.CROSTESTUTILS_DIR, 'au_test_harness',
+                        'cros_au_test_harness.py'),
            '--type=aws'
           ]
     with self.assertRaises(cros_build_lib.RunCommandError) as cm:
@@ -40,7 +41,8 @@ class CrosAuTestHarnessTest(unittest.TestCase):
 
   def testCheckOptionsRecognizesGceType(self):
     """Verifies that 'gce' is an allowed type."""
-    cmd = [os.path.join(constants.CROSUTILS_DIR, 'bin', 'cros_au_test_harness'),
+    cmd = [os.path.join(constants.CROSTESTUTILS_DIR, 'au_test_harness',
+                        'cros_au_test_harness.py'),
            '--type=gce'
           ]
     # We don't have all required flags passed in so still expect an exception,
