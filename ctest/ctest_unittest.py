@@ -1,4 +1,5 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -96,18 +97,18 @@ class CTestTest(mox.MoxTestBase):
     self.mox.StubOutWithMock(cros_build_lib, 'RunCommand')
     self.mox.StubOutWithMock(ctest.CTest, '__init__')
     self.mox.StubOutWithMock(image_extractor.ImageExtractor, 'GetLatestImage')
-    fake_result = self.mox.CreateMock(cros_build_lib.CommandResult)
-    fake_result.output = '/some/path_to/latest_version'
+    self.mox.StubOutWithMock(os, 'readlink')
 
     fake_crosutils = os.path.join(self.FAKE_ROOT, 'src', 'scripts')
+    img_dir = os.path.join(constants.SOURCE_ROOT, 'src', 'build', 'images',
+                           'board', 'latest')
+    expected_base = os.path.join(constants.SOURCE_ROOT, 'src', 'build',
+                                 'images', 'board', 'linkval')
 
     ctest.CTest.__init__(None)
-    cros_build_lib.RunCommand(
-        mox.In('./get_latest_image.sh'), cwd=fake_crosutils, print_cmd=False,
-        redirect_stdout=True).AndReturn(fake_result)
     # pylint: disable=no-value-for-parameter
-    image_extractor.ImageExtractor.GetLatestImage('latest_version').AndReturn(
-        None)
+    os.readlink(img_dir).AndReturn('linkval')
+    image_extractor.ImageExtractor.GetLatestImage('linkval').AndReturn(None)
     # pylint: enable=no-value-for-parameter
 
     self.mox.ReplayAll()
@@ -121,7 +122,7 @@ class CTestTest(mox.MoxTestBase):
     self.mox.VerifyAll()
     self.assertEqual(ctester.base, ctester.target)
     self.assertEqual(ctester.base, os.path.join(
-        fake_result.output, image_extractor.ImageExtractor.IMAGE_TO_EXTRACT))
+        expected_base, image_extractor.ImageExtractor.IMAGE_TO_EXTRACT))
 
 
 if __name__ == '__main__':

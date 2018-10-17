@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -97,14 +98,14 @@ class CTest(object):
     """Initializes the target and base images for CTest."""
     if not self.target:
       # Grab the latest image we've built.
-      return_object = cros_build_lib.RunCommand(
-          ['./get_latest_image.sh', '--board=%s' % self.board],
-          cwd=self.crosutils_root, redirect_stdout=True, print_cmd=False)
+      board_images = os.path.join(constants.SOURCE_ROOT, 'src/build/images',
+                                  self.board)
+      latest = os.path.join(board_images, 'latest')
+      version_dir = os.readlink(latest)
+      latest_image_dir = os.path.join(board_images, version_dir)
 
-      latest_image_dir = return_object.output.strip()
       self.target = os.path.join(
           latest_image_dir, image_extractor.ImageExtractor.IMAGE_TO_EXTRACT)
-
 
     # Grab the latest official build for this board to use as the base image.
     if self.archive_dir:
