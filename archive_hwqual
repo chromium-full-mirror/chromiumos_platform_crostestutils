@@ -7,7 +7,11 @@
 # Script to take an archived build result and prepare a hwqual release.
 
 SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
-. "${SCRIPT_ROOT}/common.sh" || exit 1
+SRC_DIR=$(realpath "${SCRIPT_ROOT}/../../")
+SCRIPTS_DIR="${SRC_DIR}/scripts"
+CHROMITE_DIR=$(realpath "${SRC_DIR}/../chromite")
+
+. "${SCRIPTS_DIR}/lib/shflags/shflags" || die "Couldn't find shflags"
 
 DEFAULT_PRIVATE_KEY="${SCRIPTS_DIR}/mod_for_test_scripts/ssh_keys/testing_rsa"
 
@@ -16,19 +20,35 @@ DEFINE_string from "" "Directory with autotest tarball"
 DEFINE_string to "" "Directory to receive packaged hwqual"
 DEFINE_string output_tag "chromeos-hwqual" "Name used in tar"
 DEFINE_string image_dir "" "Directory containing test image."
-DEFINE_string image "${CHROMEOS_TEST_IMAGE_NAME}" "Name of image file to use."
+DEFINE_string image "chromiumos_test_image.bin" "Name of image file to use."
 DEFINE_string ssh_private_key "${DEFAULT_PRIVATE_KEY}" \
   "Path to the private ssh key to use for testing"
 
 TMP=$(mktemp -d "/tmp/image.XXXX")
+
+# Detect whether we're inside a chroot or not.
+if [[ -e /etc/cros_chroot_version ]]; then
+  INSIDE_CHROOT=1
+else
+  INSIDE_CHROOT=0
+fi
 
 cleanup() {
   rm -rf "${TMP}"
 }
 
 main() {
-  assert_outside_chroot
-  assert_not_root_user
+  # Assert outside chroot.
+  if [[ ${INSIDE_CHROOT} -ne 0 ]]; then
+    echo "This script must be run outside the chroot"
+    exit 1
+  fi
+
+  # Assert not root user.
+  if [[ ${UID:-$(id -u)} == 0 ]]; then
+    echo "This script must be run as a non-root user."
+    exit 1
+  fi
 
   # Parse command line
   FLAGS "$@" || exit 1
@@ -49,7 +69,7 @@ main() {
     FLAGS_to="${FLAGS_from}"
   fi
 
-  local script_dir=${SCRIPTS_DIR}
+  local script_dir=${SCRIPT_ROOT}
 
   script_dir=$(readlink -f "${script_dir}")
 
@@ -87,10 +107,10 @@ main() {
   mv autotest "tarball/${FLAGS_output_tag}"
   # Copy call_autoserv.py to tarball.
   cp "${script_dir}/call_autoserv.py" "tarball/${FLAGS_output_tag}/."
-  cp "${script_dir}/generate_test_report" \
+  cp "${SRC_DIR}/third_party/autotest/files/site_utils/generate_test_report" \
     "tarball/${FLAGS_output_tag}/generate_test_report"
   # Copy python lib used in generate_test_report.
-  cp -a "${GCLIENT_ROOT}/chromite" "tarball/${FLAGS_output_tag}"
+  cp -a "${CHROMITE_DIR}" "tarball/${FLAGS_output_tag}"
   echo "Creating ${FLAGS_to}/${FLAGS_output_tag}.tar.bz2..."
   mkdir -p "${FLAGS_to}"
   cd tarball
