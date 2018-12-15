@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -10,8 +11,8 @@ import os
 import shutil
 import tempfile
 
-import constants
 from chromite.cbuildbot import constants as buildbot_constants
+from chromite.lib import constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
 from crostestutils.au_test_harness import au_worker
@@ -24,29 +25,22 @@ class VMAUWorker(au_worker.AUWorker):
   def __init__(self, options, test_results_root):
     """Processes vm-specific options."""
     super(VMAUWorker, self).__init__(options, test_results_root)
-    self.graphics_flag = ''
     self.verbose = options.verbose
-    if options.no_graphics:
-      self.graphics_flag = '--no_graphics'
+    self.graphics_flag = '--no-display' if options.no_graphics else ''
     if not self.board:
       cros_build_lib.Die('Need board to convert base image to vm.')
     self.whitelist_chrome_crashes = options.whitelist_chrome_crashes
 
-  def _KillExistingVM(self, pid_file, save_mem_path=None):
-    """Kills an existing VM specified by the pid_file."""
-    if not os.path.exists(pid_file):
-      return
-
-    cmd = ['./bin/cros_stop_vm', '--kvm_pid=%s' % pid_file]
-    if save_mem_path is not None:
-      cmd.append('--mem_path=%s' % save_mem_path)
-
-    cros_build_lib.RunCommand(cmd, print_cmd=False, error_code_ok=True,
-                              cwd=constants.CROSUTILS_DIR)
+  def _StopVM(self):
+    """Stops an existing VM."""
+    cros_build_lib.RunCommand(['./cros_vm', '--stop',
+                               '--ssh-port=%s' % self._ssh_port],
+                              print_cmd=False, error_code_ok=True,
+                              cwd=constants.CHROMITE_BIN_DIR)
 
   def CleanUp(self):
     """Stop the vm after a test."""
-    self._KillExistingVM(self._kvm_pid_file)
+    self._StopVM()
 
   def PrepareBase(self, image_path, signed_base=False):
     """Creates an update-able VM based on base image."""
@@ -78,35 +72,37 @@ class VMAUWorker(au_worker.AUWorker):
     except shutil.Error as e:
       logging.warning('Ignoring errors while copying logs: %s', e)
 
-    # Copy VM state. This includes the disk image, and the memory
-    # image.
+    # Copy VM disk image.
     try:
-      _, mem_image_path = tempfile.mkstemp(
-          dir=fail_directory, prefix="%s." % buildbot_constants.VM_MEM_PREFIX)
-      self._KillExistingVM(self._kvm_pid_file, save_mem_path=mem_image_path)
+      self._StopVM()
       shutil.move(self.vm_image_path, fail_directory)
     except shutil.Error as e:
       logging.warning('Ignoring errors while copying VM files: %s', e)
+
+  def _UpdateCmd(self, log_directory, stateful_change):
+    """Update command to use."""
+    cmd = ['%s/cros_run_vm_test' % constants.CHROMITE_BIN_DIR,
+           '--board=%s' % self.board,
+           '--image-path=%s' % self.vm_image_path,
+           '--ssh-port=%s' % self._ssh_port,
+           self.graphics_flag,
+           '--host-cmd', '--',
+           '%s/image_to_live.sh' % constants.CROSUTILS_DIR,
+           '--ssh_port=%s' % self._ssh_port,
+           '--noupdate_hostkey',
+           '--update_log=%s' % os.path.join(log_directory, 'update_engine.log'),
+           '--verify',
+           '--remote=127.0.0.1',
+           self.GetStatefulChangeFlag(stateful_change)]
+    if self.ssh_private_key:
+      cmd.append('--private_key=%s' % self.ssh_private_key)
+    return cmd
 
   def UpdateImage(self, image_path, src_image_path='', stateful_change='old',
                   proxy_port='', payload_signing_key=None):
     """Updates VM image with image_path."""
     log_directory, fail_directory = self.GetNextResultsPath('update')
-    stateful_change_flag = self.GetStatefulChangeFlag(stateful_change)
-    cmd = ['%s/bin/cros_run_vm_update' % constants.CROSUTILS_DIR,
-           '--board=%s' % self.board,
-           '--vm_image_path=%s' % self.vm_image_path,
-           '--update_log=%s' % os.path.join(log_directory, 'update_engine.log'),
-           self.graphics_flag,
-           '--persist',
-           '--kvm_pid=%s' % self._kvm_pid_file,
-           '--ssh_port=%s' % self._ssh_port,
-           '--remote=127.0.0.1',
-           stateful_change_flag,
-          ]
-    if self.ssh_private_key is not None:
-      cmd.append('--ssh_private_key=%s' % self.ssh_private_key)
-      cmd.append('--private_key=%s' % self.ssh_private_key)
+    cmd = self._UpdateCmd(log_directory, stateful_change)
     self.AppendUpdateFlags(cmd, image_path, src_image_path, proxy_port,
                            payload_signing_key)
     self.TestInfo(self.GetUpdateMessage(image_path, src_image_path, True,
@@ -119,24 +115,11 @@ class VMAUWorker(au_worker.AUWorker):
 
   def UpdateUsingPayload(self, update_path, stateful_change='old',
                          proxy_port=None):
-    """Updates a vm image using cros_run_vm_update."""
+    """Updates a vm image using image_to_live.sh."""
     log_directory, fail_directory = self.GetNextResultsPath('update')
-    stateful_change_flag = self.GetStatefulChangeFlag(stateful_change)
-    cmd = ['%s/bin/cros_run_vm_update' % constants.CROSUTILS_DIR,
-           '--board=%s' % self.board,
-           '--payload=%s' % update_path,
-           '--vm_image_path=%s' % self.vm_image_path,
-           '--update_log=%s' % os.path.join(log_directory, 'update_engine.log'),
-           self.graphics_flag,
-           '--persist',
-           '--kvm_pid=%s' % self._kvm_pid_file,
-           '--ssh_port=%s' % self._ssh_port,
-           '--remote=127.0.0.1',
-           stateful_change_flag,
-          ]
-    if self.ssh_private_key is not None:
-      cmd.append('--ssh_private_key=%s' % self.ssh_private_key)
-      cmd.append('--private_key=%s' % self.ssh_private_key)
+    cmd = self._UpdateCmd(log_directory, stateful_change) + [
+        '--payload=%s' % update_path
+    ]
     if proxy_port:
       cmd.append('--proxy_port=%s' % proxy_port)
     self.TestInfo(self.GetUpdateMessage(update_path, None, True, proxy_port))
@@ -168,34 +151,29 @@ class VMAUWorker(au_worker.AUWorker):
     Returns True upon success.  Prints test output and returns False otherwise.
     """
     log_directory, fail_directory = self.GetNextResultsPath('autotest_tests')
-    (_, _, log_directory_in_chroot) = log_directory.rpartition('chroot')
     # image_to_live already verifies lsb-release matching.  This is just
     # for additional steps.
     if not test:
       test = self.verify_suite
-
-    command = ['./bin/cros_run_vm_test',
+    command = ['./cros_run_vm_test',
                '--board=%s' % self.board,
-               '--image_path=%s' % self.vm_image_path,
-               '--persist',
-               '--kvm_pid=%s' % self._kvm_pid_file,
-               '--ssh_port=%s' % self._ssh_port,
-               '--results_dir_root=%s' % log_directory_in_chroot,
-               '--verbose=0',
-               test,
+               '--image-path=%s' % self.vm_image_path,
+               '--ssh-port=%s' % self._ssh_port,
+               '--results-dir=%s' % log_directory,
+               '--autotest=%s' % test,
               ]
     if self.graphics_flag:
       command.append(self.graphics_flag)
     if self.whitelist_chrome_crashes:
-      command.append('--whitelist_chrome_crashes')
-    if self.ssh_private_key is not None:
-      command.append('--ssh_private_key=%s' % self.ssh_private_key)
+      command.append('--test_that-args=--whitelist-chrome-crashes')
+    if self.ssh_private_key:
+      command.append('--private-key=%s' % self.ssh_private_key)
 
     self.TestInfo('Running %s suite to verify image.' % test)
 
     result = cros_build_lib.RunCommand(
         command, print_cmd=self.verbose, combine_stdout_stderr=True,
-        cwd=constants.CROSUTILS_DIR, error_code_ok=True,
+        cwd=constants.CHROMITE_BIN_DIR, error_code_ok=True,
         capture_output=not self.verbose)
     # If the command failed or printed warnings, print the output.
     # TODO(pwang): result.output should contain the output of the command even
