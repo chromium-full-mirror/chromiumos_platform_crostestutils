@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-#
+# -*- coding: utf-8 -*-
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -24,6 +24,7 @@ import constants
 sys.path.append(constants.SOURCE_ROOT)
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 
+from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
 from chromite.lib import dev_server_wrapper
@@ -66,8 +67,8 @@ class DevModeTest(object):
     self.tmpdir = tempfile.mkdtemp('DevModeTest')
     self.working_image_path = None
     self.devserver = None
-    self.vm = None
     self.device = None
+    self.port = None
 
   def Cleanup(self):
     """Cleans up any state at the end of the test."""
@@ -78,9 +79,12 @@ class DevModeTest(object):
       if self.device:
         self.device.Cleanup()
       self.device = None
-      if self.vm:
-        self.vm.Stop()
-      self.vm = None
+      if self.port:
+        cros_build_lib.RunCommand(['./cros_vm', '--stop',
+                                   '--ssh-port=%d' % self.port],
+                                  cwd=chromite_constants.CHROMITE_BIN_DIR,
+                                  error_code_ok=True)
+      self.port = None
       osutils.RmDir(self.tmpdir, ignore_missing=True)
       self.tmpdir = None
     except Exception:
@@ -114,12 +118,14 @@ class DevModeTest(object):
     logging.info('Wiping /usr/local/bin from the image.')
     self._WipeDevInstall()
 
-    self.vm = vm.VMInstance(self.working_image_path, tempdir=self.tmpdir)
-    logging.info('Starting the vm on port %d.', self.vm.port)
-    self.vm.Start()
+    self.port = remote_access.GetUnusedPort()
+    logging.info('Starting the vm on port %d.', self.port)
+    vm_cmd = ['./cros_vm', '--ssh-port=%d' % self.port,
+              '--image-path=%s' % self.working_image_path, '--start']
+    cros_build_lib.RunCommand(vm_cmd, cwd=chromite_constants.CHROMITE_BIN_DIR)
 
     self.device = remote_access.ChromiumOSDevice(
-        remote_access.LOCALHOST, port=self.vm.port, base_dir=self.tmpdir)
+        remote_access.LOCALHOST, port=self.port, base_dir=self.tmpdir)
 
     if not self.binhost:
       logging.info('Starting the devserver.')
