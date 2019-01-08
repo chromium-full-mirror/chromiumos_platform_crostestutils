@@ -6,9 +6,17 @@
 
 # TODO(someone): Obviate in favor of monitoring and alerting.
 
-GSC_LABSTATIONS="chromeos1-row2-rack1-labstation \
-  chromeos1-row2-rack10-labstation chromeos1-row1-rack5-labstation"
 SERVO_PORTS="9901 9902 9903 9904"
+
+find_gsc_labstations() {
+  atest host list --label=pool:faft-cr50 --parse \
+  | cut -f 1 -d \| \
+  | sed 's/host.*/labstation/g' \
+  | sed 's/Host=//g' \
+  | sort \
+  | uniq \
+  | xargs
+}
 
 echo "This script asssumes many things, like that you have atest in the \
   environment that you run it, that you have cros in your DNS search path, and \
@@ -17,11 +25,12 @@ echo "This script asssumes many things, like that you have atest in the \
   encouraged to extend and enhance it, but longer term it should be mostly \
   obviated by monitoring and alerting."
 
-# TODO(kmshelton): Add an option to gather data on faft-test pool devices or
-# faft-cr50 devices instead of hardcoding for faft-cr50 pool devices.
+# TODO(kmshelton): Add an option to gather data on chromeos1 faft-test pool
+# devices.
 
 echo -e "\nChecking that the labstations respond to ping first, because if a \
   labstation is down: you are hosed."
+GSC_LABSTATIONS="$(find_gsc_labstations)"
 fping $GSC_LABSTATIONS
 
 echo -e "\n\nLogging labstation's version, uptime, the last 10 eventlog lines, \
