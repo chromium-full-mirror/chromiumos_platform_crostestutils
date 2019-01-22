@@ -55,13 +55,11 @@ for STATION in $LABSTATIONS;
 done
 
 echo -e "\n\nChecking for lines with ERROR in the most recent servod log (the \
-  last 4 will be on the labstation, only the most recent one is checked here). \
-  Errors that appear to match the signature of the KI from b/110796670 are \
-  ignored (it is safe to ignore)."
-for STATION in $LABSTATIONS;
+  last 4 will be on the labstation, only the most recent one is checked here)."
+for STATION in $GSC_LABSTATIONS;
     do echo -e "\nchecking $STATION"
-    ssh -o StrictHostKeyChecking=no root@$STATION "grep ERROR \
-      /var/log/servod_990*.log | grep -v 8001";
+    ssh -o StrictHostKeyChecking=no root@$STATION \
+      "grep ERROR /var/log/servod_990*.log";
 done
 
 
