@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,8 +8,10 @@
 
 SERVO_PORTS="9901 9902 9903 9904"
 
-find_gsc_labstations() {
-  atest host list --label=pool:faft-cr50 --parse \
+# Labstations outside of the high touch lab (chromeos1) are excluded.
+find_labstations() {
+  atest host list --label=pool:${POOL} --parse \
+  | grep chromeos1- \
   | cut -f 1 -d \| \
   | sed 's/host.*/labstation/g' \
   | sed 's/Host=//g' \
@@ -18,6 +20,18 @@ find_gsc_labstations() {
   | xargs
 }
 
+POOL=faft-cr50
+while getopts 'p:' OPTION
+do
+  case $OPTION in
+    p) POOL="$OPTARG"
+       ;;
+    ?) printf "Usage: %s [-p value]\n" ${0##*/} >&2
+       exit 2
+       ;;
+    esac
+done
+
 echo "This script asssumes many things, like that you have atest in the \
   environment that you run it, that you have cros in your DNS search path, and \
   that you have added the testing_rsa key to your ssh agent.  This is just a \
@@ -25,17 +39,15 @@ echo "This script asssumes many things, like that you have atest in the \
   encouraged to extend and enhance it, but longer term it should be mostly \
   obviated by monitoring and alerting."
 
-# TODO(kmshelton): Add an option to gather data on chromeos1 faft-test pool
-# devices.
-
 echo -e "\nChecking that the labstations respond to ping first, because if a \
   labstation is down: you are hosed."
-GSC_LABSTATIONS="$(find_gsc_labstations)"
-fping $GSC_LABSTATIONS
+LABSTATIONS="$(find_labstations)"
+echo $LABSTATIONS
+fping $LABSTATIONS
 
 echo -e "\n\nLogging labstation's version, uptime, the last 10 eventlog lines, \
   and servod process state"
-for STATION in $GSC_LABSTATIONS;
+for STATION in $LABSTATIONS;
     do echo -e "\n\nsshing to $STATION\n"
     ssh -o StrictHostKeyChecking=no root@$STATION "grep \
       guado_labstation-release /etc/lsb-release; echo -e \"\"; uptime; \
@@ -46,7 +58,7 @@ echo -e "\n\nChecking for lines with ERROR in the most recent servod log (the \
   last 4 will be on the labstation, only the most recent one is checked here). \
   Errors that appear to match the signature of the KI from b/110796670 are \
   ignored (it is safe to ignore)."
-for STATION in $GSC_LABSTATIONS;
+for STATION in $LABSTATIONS;
     do echo -e "\nchecking $STATION"
     ssh -o StrictHostKeyChecking=no root@$STATION "grep ERROR \
       /var/log/servod_990*.log | grep -v 8001";
@@ -57,7 +69,7 @@ echo -e "\n\nLogging servo versions (there's 4 per labsation even if there \
   aren't 4 DUTs). This should excercise the servo consoles.  If you get \
   connection refused, servod has likely stopped.  If you get a timeout waiting \
   for response, the servo has likely crashed (no console response)."
-for STATION in $GSC_LABSTATIONS;
+for STATION in $LABSTATIONS;
     do echo -e "\nchecking $STATION"
     for PORT in $SERVO_PORTS;
         do ssh -o StrictHostKeyChecking=no root@$STATION "dut-control -p $PORT \
@@ -73,7 +85,7 @@ echo -e "\nGathering kernel and servod logs."
 LOGS_DIR="$(mktemp -d)"
 cd $LOGS_DIR
 echo -e "\nLogs will be stored in $LOGS_DIR"
-for STATION in $GSC_LABSTATIONS;
+for STATION in $LABSTATIONS;
     do mkdir $LOGS_DIR/$STATION
     echo "checking $STATION"
     scp -o StrictHostKeyChecking=no root@$STATION:/var/log/messages \
@@ -84,7 +96,7 @@ done
 
 echo -e "\n\nChecking for the failure signature ("did not claim interface") of \
   b/110045723:"
-for STATION in $GSC_LABSTATIONS;
+for STATION in $LABSTATIONS;
     do grep -r "did not claim interface" $LOGS_DIR/$STATION;
 done
 
@@ -103,4 +115,5 @@ echo -e "\n\nLogging high level host overview. DUTs should have a status of \
   figure out why.  If you find yourself repeatedly checking something, extend \
   this script with what you are checking.\n"
 
-atest host list --label=pool:faft-cr50 --parse | cut -f 1,2,4,5,6 -d \|
+atest host list --label=pool:${POOL} --parse \
+| grep chromeos1- | cut -f 1,2,4,5,6 -d \|
