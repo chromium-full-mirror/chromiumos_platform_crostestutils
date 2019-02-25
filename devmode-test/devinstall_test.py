@@ -4,12 +4,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Integration test to test the basic functionality of dev-install and gmerge.
+"""Integration test to test the basic functionality of dev-install.
 
 This module contains a test that runs some sanity integration tests against
 a VM. First it starts a VM test image and turns it into a base image by wiping
 all of the stateful partition. Once done, runs dev_install to restore the
-stateful partition and then runs gmerge.
+stateful partition.
 """
 
 from __future__ import print_function
@@ -57,7 +57,7 @@ class DevModeTest(object):
       image_path: Filesystem path to the image to test.
       board: Board of the image under test.
       binhost: Binhost override. Binhost as defined here is where dev-install
-               or gmerge go to search for binary packages. By default this will
+               go to search for binary packages. By default this will
                be set to the devserver url of the host running this script.
                If no override i.e. the default is ok, set to None.
     """
@@ -155,25 +155,10 @@ class DevModeTest(object):
                     'details.')
       raise TestError('dev-install test failed with: %s' % str(e))
 
-  def TestGmerge(self):
-    """Evaluates whether the test passed or failed."""
-    logging.info('Testing that gmerge works on the image after dev install.')
-    try:
-      self.device.RunCommand(
-          ['gmerge', 'gmerge', '--accept_stable', '--usepkg',
-           '--devserver_url', self.devserver.GetDevServerURL(
-               ip=self.HOST_IP_ADDRESS, port=self.devserver.port),
-           '--board', self.board])
-    except (cros_build_lib.RunCommandError,
-            remote_access.SSHConnectionError) as e:
-      logging.error('gmerge test failed. See log for details')
-      raise TestError('gmerge test failed with: %s' % str(e))
-
   def Run(self):
     try:
       self.PrepareTest()
       self.TestDevInstall()
-      self.TestGmerge()
       logging.info('All tests passed.')
     finally:
       self.Cleanup()
