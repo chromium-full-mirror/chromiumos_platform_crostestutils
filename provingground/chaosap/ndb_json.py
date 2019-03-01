@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 JSON encoder/decoder adapted for use with Google App Engine NDB.
 Usage:
