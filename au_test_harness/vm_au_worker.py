@@ -12,9 +12,10 @@ import shutil
 import tempfile
 
 from chromite.cbuildbot import constants as buildbot_constants
-from chromite.lib import constants
+from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
+from crostestutils.lib import constants
 from crostestutils.au_test_harness import au_worker
 from crostestutils.au_test_harness import update_exception
 
@@ -36,7 +37,7 @@ class VMAUWorker(au_worker.AUWorker):
     cros_build_lib.RunCommand(['./cros_vm', '--stop',
                                '--ssh-port=%s' % self._ssh_port],
                               print_cmd=False, error_code_ok=True,
-                              cwd=constants.CHROMITE_BIN_DIR)
+                              cwd=chromite_constants.CHROMITE_BIN_DIR)
 
   def CleanUp(self):
     """Stop the vm after a test."""
@@ -81,7 +82,7 @@ class VMAUWorker(au_worker.AUWorker):
 
   def _UpdateCmd(self, log_directory, stateful_change):
     """Update command to use."""
-    cmd = ['%s/cros_run_vm_test' % constants.CHROMITE_BIN_DIR,
+    cmd = ['%s/cros_run_vm_test' % chromite_constants.CHROMITE_BIN_DIR,
            '--board=%s' % self.board,
            '--image-path=%s' % self.vm_image_path,
            '--ssh-port=%s' % self._ssh_port,
@@ -173,7 +174,7 @@ class VMAUWorker(au_worker.AUWorker):
 
     result = cros_build_lib.RunCommand(
         command, print_cmd=self.verbose, combine_stdout_stderr=True,
-        cwd=constants.CHROMITE_BIN_DIR, error_code_ok=True,
+        cwd=chromite_constants.CHROMITE_BIN_DIR, error_code_ok=True,
         capture_output=not self.verbose)
     # If the command failed or printed warnings, print the output.
     # TODO(pwang): result.output should contain the output of the command even
