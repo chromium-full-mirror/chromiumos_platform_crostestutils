@@ -24,7 +24,6 @@ import unittest
 import errno
 
 import constants
-sys.path.append(constants.CROSUTILS_LIB_DIR)
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 sys.path.append(constants.SOURCE_ROOT)
 
