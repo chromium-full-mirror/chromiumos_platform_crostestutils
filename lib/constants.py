@@ -9,16 +9,16 @@ from __future__ import print_function
 
 import os
 
-_TEST_LIB_PATH = os.path.realpath(__file__)
+_TEST_LIB_PATH = os.path.dirname(os.path.realpath(__file__))
 
 CROSTESTUTILS_DIR = os.path.dirname(_TEST_LIB_PATH)
 
-CROS_PLATFORM_ROOT = os.path.join(CROSTESTUTILS_DIR, '..', '..')
+CROS_PLATFORM_ROOT = os.path.join(CROSTESTUTILS_DIR, '..')
 
 DEFAULT_CHROOT_DIR = 'chroot'
 
 SOURCE_ROOT = os.path.realpath(os.path.join(
-    os.path.dirname(_TEST_LIB_PATH), '..', '..', '..', '..'))
+    _TEST_LIB_PATH, '..', '..', '..', '..'))
 
 CROSUTILS_DIR = os.path.join(SOURCE_ROOT, 'src', 'scripts')
 
