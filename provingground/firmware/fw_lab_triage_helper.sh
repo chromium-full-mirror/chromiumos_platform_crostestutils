@@ -46,12 +46,17 @@ echo $LABSTATIONS
 fping $LABSTATIONS
 
 echo -e "\n\nLogging labstation's version, uptime, the last 10 eventlog lines, \
-  and servod process state"
+  and the update_engine's PID:"
 for STATION in $LABSTATIONS;
     do echo -e "\n\nsshing to $STATION\n"
-    ssh -o StrictHostKeyChecking=no root@$STATION "grep \
-      guado_labstation-release /etc/lsb-release; echo -e \"\"; uptime; \
-      echo -e \"\"; mosys eventlog list | tail -n 10; echo -e \"\";"
+    ssh -o StrictHostKeyChecking=no root@$STATION "
+      grep guado_labstation-release /etc/lsb-release;
+      echo;
+      uptime;
+      echo;
+      mosys eventlog list | tail -n 10;
+      echo;
+      pgrep --list-full update_engine;"
 done
 
 echo -e "\n\nChecking for lines with ERROR in the most recent servod log (the \
