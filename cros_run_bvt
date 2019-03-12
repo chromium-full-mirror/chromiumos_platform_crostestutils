@@ -25,7 +25,7 @@ DEFINE_boolean canary "${FLAGS_FALSE}" \
 DEFINE_boolean labqual "${FLAGS_FALSE}" \
   "Run the BVT tests required for lab qualification"
 DEFINE_boolean debug "${FLAGS_FALSE}" \
-  "Debug and test support for this script"
+  "Print commands that would've been run without doing anything"
 
 # These options only matter if we're using Servo, which only
 # happens when --labqual is specified.
@@ -96,4 +96,16 @@ DEBUG=
 if [ ${FLAGS_debug} -eq ${FLAGS_TRUE} ]; then
   DEBUG=echo
 fi
+
 $DEBUG test_that "${OPTIONS[@]}" "$DUT" "${TESTS[@]}"
+AUTOTEST_STATUS=$?
+
+# Run mostly the same Tast tests as the bvt-tast-cq suite regardless of flags.
+# Exclude "meta" tests, as they're just designed to exercise Tast itself.
+$DEBUG tast -verbose run -build=false "$DUT" \
+  '(!disabled && !"group:*" && !informational && !"name:meta.*")'
+TAST_STATUS=$?
+
+if [ ${AUTOTEST_STATUS} -ne 0 ] || [ ${TAST_STATUS} -ne 0 ]; then
+  die "Autotest exited with ${AUTOTEST_STATUS}; Tast exited with ${TAST_STATUS}"
+fi
