@@ -8,6 +8,7 @@
 set -e
 
 SHILL_START_LOCK_PATH="/var/lock/shill-start.lock"
+WIFI_CRED=/usr/local/etc/wifi_cred
 
 # See code in src/thirdparty/autotest/files/client/cros/power_suspend.py
 PAUSE_FILE=/run/autotest_pause_ethernet_hook
@@ -242,6 +243,14 @@ pause_check_ethernet() {
 }
 
 main() {
+  # Special check for devices running power autotests that connect to moblab via
+  # WiFi. This check saves devices from rebooting even though they don't have
+  # wired ethernet connection.
+  if [ -f "${WIFI_CRED}" ]; then
+    info_msg "${WIFI_CRED} found. No need to check ethernet."
+    return 0
+  fi
+
   local recovery_method
 
   for recovery_method in toggle_usb_ports reload_ethernet_drivers; do
