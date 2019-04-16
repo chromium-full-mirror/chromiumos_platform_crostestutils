@@ -1,0 +1,151 @@
+#!/bin/bash
+
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Script to aid in maintaining AP/EC/GSC Firmware test enivornment health.
+
+# TODO(kmshelton): Obviate in favor of monitoring and alerting.
+
+# TODO(kmshelton): Support hosts that are in the fw lab, but not in a qual
+# enivornment (i.e. hosts for which this static list of servo ports is not a
+# safe assumption).
+SERVO_PORTS="9901 9902 9903 9904"
+
+find_fw_qual_labstations() {
+  # Labstations outside of the high touch lab (chromeos1) are not in the qual
+  # environment.
+  atest host list --label=pool:$1 --parse \
+    | grep chromeos1- \
+    | cut -f 1 -d \| \
+    | sed 's/host.*/labstation/g' \
+    | sed 's/Host=//g' \
+    | sort \
+    | uniq \
+    | xargs
+}
+
+print_long_message() {
+  message="$(sed 's/[[:space:]]\{2,\}/ /' <<< $1)"
+  message="$(tr -d  '\n' <<< $message)"
+  terminal_columns=$(tput cols)
+  message="$(fold -w ${terminal_columns} -s <<< $message)"
+  printf '%s\n\n' "$message"
+}
+
+main() {
+  local pool
+  while getopts 'p:' OPTION; do
+    case $OPTION in
+      p) pool="$OPTARG"
+        ;;
+      ?) printf "Usage: %s [-p value]\n" ${0##*/} >&2
+        exit 2
+        ;;
+      esac
+  done
+  : ${pool:="faft-cr50"}
+
+  local labstations
+  labstations="$(find_fw_qual_labstations ${pool})"
+
+  WARNING_MESSAGE="This script asssumes many things, like that you have atest in
+    the environment in which it is run, that you have cros in your DNS search
+    path, and that you have configured you environment to use the testing_rsa
+    key on lab DUTs.  This is just a convenience script for firmware qual test
+    environment health triage.  Feel free and encouraged to extend and enhance
+    it, but in the long term, it should be obviated by monitoring and alerting."
+  print_long_message "${WARNING_MESSAGE}"
+
+  LABSTATION_SANITY_CHECK_MESSAGE="Checking that the labstations respond to ping
+    first, because if a labstation is down: you are hosed:"
+  print_long_message "${LABSTATION_SANITY_CHECK_MESSAGE}"
+  fping ${labstations}
+  printf "\n\n"
+
+  LABSTATION_CHECK_MESSAGE="Logging labstation's version, uptime, the last 10
+    eventlog lines, and the update_engine's PID:"
+  print_long_message "${LABSTATION_CHECK_MESSAGE}"
+  for station in ${labstations}; do
+    printf "\nChecking $station\n"
+    ssh -o StrictHostKeyChecking=no root@$station "
+      grep guado_labstation-release /etc/lsb-release;
+      printf \"\n\";
+      uptime;
+      printf \"\n\";
+      mosys eventlog list | tail -n 10;
+      printf \"\n\";
+      pgrep --list-full update_engine;
+      printf \"\n\";"
+  done
+
+  SERVOD_CHECK_MESSAGE="Checking for lines with ERROR in the most recent servod
+    log (the last 4 will be on the labstation, only the most recent one is
+    checked here)."
+  print_long_message "${SERVOD_CHECK_MESSAGE}"
+  for station in ${labstations}; do
+    printf "\nChecking $station\n"
+    ssh -o StrictHostKeyChecking=no root@$station \
+      "grep ERROR /var/log/servod_990*.log";
+  done
+
+  SERVO_CHECK_MESSAGE="Logging servo versions (there's 4 per labsation even if
+    there aren't 4 DUTs).  This should excercise the servo consoles.  If you get
+    connection refused, servod has likely stopped.  If you get a timeout waiting
+    for response, the servo has likely wedged (no console response)."
+  printf "\n"
+  print_long_message "${SERVO_CHECK_MESSAGE}"
+
+  for station in ${labstations}; do
+    printf "\nChecking $station\n"
+    for port in ${SERVO_PORTS}; do
+      ssh -o StrictHostKeyChecking=no root@$station "dut-control -p $port \
+        servo_micro_version; dut-control -p $port servo_v4_version;"
+      done;
+  done
+
+  # TODO(kmshelton): Figure out how to check if the latest build was successful
+  # for all models in the environment, since this is the cause of missing
+  # nightlies sometimes.
+
+  printf "\nGathering kernel and servod logs."
+  logs_dir="$(mktemp -d)"
+  cd $logs_dir
+  printf "\nLogs will be stored in $logs_dir\n"
+  for station in ${labstations}; do
+    mkdir $logs_dir/$station
+    printf "Gathering from ${station}.\n"
+    scp -o StrictHostKeyChecking=no root@$station:/var/log/messages \
+      $logs_dir/$station > /dev/null;
+    scp -o StrictHostKeyChecking=no root@$station:/var/log/servo* \
+      $logs_dir/$station > /dev/null;
+  done
+
+  FAILURE_SIG_MESSAGE="Checking for the failure signature (\"did not claim
+    interface\") of b/110045723:"
+  print_long_message "${FAILURE_SIG_MESSAGE}"
+  for station in ${labstations}; do
+    grep -r "did not claim interface" $logs_dir/$station;
+  done
+
+  printf "Tarring kernel and servo logs.\n\n"
+  tarball="$(mktemp)"
+  tar -cvf $tarball . > /dev/null
+  TARBALL_MESSAGE="There will be a tarball at $tarball.  Attach the tarball to
+    any bugs filed."
+  print_long_message "${TARBALL_MESSAGE}"
+  printf "Returning to original directory.\n\n"
+  cd - > /dev/null
+
+  OVERVIEW_MESSAGE="Logging a high level host overview. DUTs should have a
+    status of \"Ready\", unless there is a KI.  If a DUT is stuck in a repair
+    state, try to figure out why.  If you find yourself repeatedly checking
+    something, extend this script with what you are checking."
+  print_long_message "${OVERVIEW_MESSAGE}"
+  atest host list --label=pool:${pool} --parse \
+    | grep chromeos1- \
+    | cut -f 1,2,4,5,6 -d \|
+}
+
+main "$@"
