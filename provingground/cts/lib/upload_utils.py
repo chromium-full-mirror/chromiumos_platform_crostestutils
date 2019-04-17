@@ -56,14 +56,14 @@ class UploadUtils(object):
 
   def PrintObsoleteFolderCount(self):
     """Prints obsolete file count in case of build id mismatch."""
-    if not self.build_mismatch_file_count == 0:
+    if self.build_mismatch_file_count != 0:
       err_msg = ('Build ID Mismatch!Pushed {0} invalid files to BuildID'
                  ' Mismatch Folder'.format(self.build_mismatch_file_count))
       print(self.BOLD + self.C_RED + err_msg +self.BOLD+ self.C_END)
 
   def PrintUntestedFolderCount(self):
     """Prints untested file count if untested tests exist."""
-    if not self.untested_file_count == 0:
+    if self.untested_file_count != 0:
       err_msg = ('Untested Test(s) Detected!Pushed {0} files to Untested'
                  ' Tests Folder'.format(self.untested_file_count))
       print(self.BOLD + self.C_RED + err_msg +self.BOLD+ self.C_END)
@@ -127,28 +127,28 @@ class UploadUtils(object):
     : relm           : R62-9901.20.0       : 7.1_r9
 
     Args:
-       item: Information list to be printed to terminal.
+      item: Information list to be printed to terminal.
     """
     print(('{:^%s}'%self.SPACE_COUNT_CTSV_BOARD_NAME).format(item[1]),
-          ('{:>%s}'%self.SPACE_COUNT_CTSV_BUILD_VERSION).format(item[2]),
-          ('{:>%s}'%self.SPACE_COUNT_VERIFIER_VERSION).format(item[3]))
+          ('{:>%s}'%self.SPACE_COUNT_CTSV_BUILD_VERSION).format(item[3]),
+          ('{:>%s}'%self.SPACE_COUNT_VERIFIER_VERSION).format(item[4]))
 
   def SegregateCtsDataToPrint(self, item):
     """Segregates passed and failed results into two separate lists.
 
     Args:
-       item: Board information.
+      item: Board information.
     """
     rerun = 0
-    if ((item[7] == self.TEST_PASS and
-         item[6] != self.TEST_FAIL) or
-        item[7] == self.TEST_PASS_X86_64):
+    if ((item[8] == self.TEST_PASS and
+         item[7] != self.TEST_FAIL) or
+        item[8] == self.TEST_PASS_X86_64):
       self.passed_list.append(item)
 
       for i in range(len(self.passed_list)):
         if(self.passed_list[i][1] == item[1] and
-           self.passed_list[i][3] == item[3] and
-           self.passed_list[i][5] == item[5]):
+           self.passed_list[i][4] == item[4] and
+           self.passed_list[i][6] == item[6]):
           rerun = rerun + 1
         if rerun > 1:
           break
@@ -174,12 +174,12 @@ class UploadUtils(object):
     print(('{:<%i}'%self.SPACE_COUNT_ROW).format(self.row_count),
           ('{:>%s}'%self.SPACE_COUNT_TIMESTAMP).format(item[0]),
           ('{:^%s}'%self.SPACE_COUNT_CTS_BOARD_NAME).format(item[1]),
-          ('{:^%s}'%self.SPACE_COUNT_CTS_BUILD_VERSION).format(item[2]),
-          ('{:>%s}'%self.SPACE_COUNT_CTS_BOARD_ABI).format(item[3]),
-          ('{:^%s}'%self.SPACE_COUNT_PACKAGE_NAME).format(item[4]),
-          ('{:<%s}'%self.SPACE_COUNT_TEST_NAME).format(item[5]),
-          ('{:<%s}'%self.SPACE_COUNT_FAILED_TESTS).format(item[6]),
-          ('{:<%s}'%self.SPACE_COUNT_PASSED_TESTS).format(item[7]))
+          ('{:^%s}'%self.SPACE_COUNT_CTS_BUILD_VERSION).format(item[3]),
+          ('{:>%s}'%self.SPACE_COUNT_CTS_BOARD_ABI).format(item[4]),
+          ('{:^%s}'%self.SPACE_COUNT_PACKAGE_NAME).format(item[5]),
+          ('{:<%s}'%self.SPACE_COUNT_TEST_NAME).format(item[6]),
+          ('{:<%s}'%self.SPACE_COUNT_FAILED_TESTS).format(item[7]),
+          ('{:<%s}'%self.SPACE_COUNT_PASSED_TESTS).format(item[8]))
 
   def GetXmlTagNamesCtsv(self):
     """Get xml tag names.
@@ -191,12 +191,14 @@ class UploadUtils(object):
     RESULT_XML_TAG = 'Result'
     SUITE_VERSION_XML_TAG = 'suite_version'
     BUILD_BOARD_XML_TAG = 'build_board'
+    BUILD_MODEL_XML_TAG = 'build_product'
     BUILD_ID_N_XML_TAG = 'build_id'
     TEST_XML_TAG = 'Test'
     return [BUILD_N_XML_TAG,
             RESULT_XML_TAG,
             SUITE_VERSION_XML_TAG,
             BUILD_BOARD_XML_TAG,
+            BUILD_MODEL_XML_TAG,
             BUILD_ID_N_XML_TAG,
             TEST_XML_TAG]
 
@@ -212,6 +214,7 @@ class UploadUtils(object):
     SUMMARY_XML_TAG = 'Summary'
     BUILD_N_XML_TAG = 'Build'
     BUILD_BOARD_VERSION_XML_TAG = 'build_board'
+    BUILD_MODEL_VERSION_XML_TAG = 'build_product'
     BUILD_ID_N_XML_TAG = 'build_id'
     TEST_PACKAGE_LIST_N_XML_TAG = 'Module'
     TEST_PACKAGE_NAME_N_XML_TAG = 'name'
@@ -224,6 +227,7 @@ class UploadUtils(object):
     return [SUMMARY_XML_TAG,
             BUILD_N_XML_TAG,
             BUILD_BOARD_VERSION_XML_TAG,
+            BUILD_MODEL_VERSION_XML_TAG,
             BUILD_ID_N_XML_TAG,
             TEST_PACKAGE_LIST_N_XML_TAG,
             TEST_PACKAGE_NAME_N_XML_TAG,
@@ -251,9 +255,10 @@ class UploadUtils(object):
     build_board = ''
     split_file_list = self.SplitFileName(filename)
     base = split_file_list[0]
+    build_model = self.build_info_list[-1][2]
     build_board = self.build_info_list[-1][1]
-    build_id_folder = self.build_info_list[-1][2]
-    release_folder = '%s-release' % build_board
+    build_id_folder = self.build_info_list[-1][3]
+    release_folder = '%s.%s-release' % (build_model, build_board)
     manual_folder = 'manual'
     apfe_path = os.path.join(dir_path, release_folder, build_id_folder,
                              manual_folder)
@@ -272,8 +277,9 @@ class UploadUtils(object):
     split_file_list = self.SplitFileName(filename)
     base = split_file_list[0]
     build_board = self.build_info_list[-1][1]
-    build_id_folder = self.build_info_list[-1][2]
-    release_folder = '%s-release' % build_board
+    build_model = self.build_info_list[-1][2]
+    build_id_folder = self.build_info_list[-1][3]
+    release_folder = '%s.%s-release' %(build_model, build_board)
     apfe_path = os.path.join(dir_path, release_folder, build_id_folder)
     if not os.path.exists(apfe_path):
       os.makedirs(apfe_path)
@@ -290,7 +296,7 @@ class UploadUtils(object):
     build_id = None
     build_board = None
     build_board = self.build_info_list[-1][1]
-    build_id = self.build_info_list[-1][2]
+    build_id = self.build_info_list[-1][3]
     split_file_list = self.SplitFileName(filename)
     basename_xml_file = split_file_list[2]
     basename_xml_gz_file = split_file_list[3]

@@ -103,16 +103,19 @@ class UploadCts(UploadUtils):
   def PrintGsutilLinks(self, dir_path):
     """Prints gsutil links to upload results to CTS and APFE buckets.
 
+       Sample APFE:board.board for non-unibuild.
+       Sample APFE:model.board for unibuild.
+
     Args:
       dir_path: Results directory path.
     """
     for item in self.build_info_list:
       if self.test_board_name != item[1]:
-        print('gsutil cp -r {0}/{1}-release/ gs://chromeos-cts-apfe/'
-              .format(dir_path, item[1]))
+        print('gsutil cp -r {0}/{1}.{2}-release/ gs://chromeos-cts-apfe/'
+              .format(dir_path, item[2], item[1]))
         print('gsutil cp -r {0}/{1}_{2}/ '
               'gs://chromeos-cts-results/manual'
-              .format(dir_path, item[2], item[1]))
+              .format(dir_path, item[3], item[1]))
         self.test_board_name = item[1]
 
 
@@ -137,14 +140,15 @@ class UploadCts(UploadUtils):
     summary = tag_list[0]
     build_version = tag_list[1]
     build_board_version = tag_list[2]
-    build_id_type = tag_list[3]
-    test_package_list = tag_list[4]
-    test_package_v = tag_list[5]
-    build_abi_type = tag_list[6]
-    failed = tag_list[7]
-    passed = tag_list[8]
-    test = tag_list[9]
-    name = tag_list[10]
+    build_model_version = tag_list[3]
+    build_id_type = tag_list[4]
+    test_package_list = tag_list[5]
+    test_package_v = tag_list[6]
+    build_abi_type = tag_list[7]
+    failed = tag_list[8]
+    passed = tag_list[9]
+    test = tag_list[10]
+    name = tag_list[11]
     split_file_list = self.SplitFileName(abs_input_file_path)
     basename = split_file_list[1]
     full_base_name = os.path.join(dir_path, basename)
@@ -189,6 +193,7 @@ class UploadCts(UploadUtils):
       self.untested_tests_exist = True
     else:
       build_board = build_info[0].attributes[build_board_version].value
+      build_model = build_info[0].attributes[build_model_version].value
       build_id = build_info[0].attributes[build_id_type].value
       test_package = test_package_list[0].attributes[test_package_v].value
       build_abi = test_package_list[0].attributes[build_abi_type].value
@@ -197,6 +202,7 @@ class UploadCts(UploadUtils):
       test = test[0].attributes[name].value
       self.UpdateBuildInfoList([timestamp,
                                 build_board,
+                                build_model,
                                 build_id,
                                 build_abi,
                                 test_package,
@@ -229,7 +235,7 @@ class UploadCts(UploadUtils):
                           dir_path)
 
         for item in self.build_info_list:
-          build_id = item[2]
+          build_id = item[3]
 
         if build_id == input_build_id:
           self.valid_exist = True

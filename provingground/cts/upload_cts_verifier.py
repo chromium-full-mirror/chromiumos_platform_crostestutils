@@ -65,16 +65,19 @@ class UploadCtsVerifier(UploadUtils):
   def PrintGsutilLinks(self, dir_path):
     """Prints gsutil links to upload results to CTS dashboard and APFE buckets.
 
+       CTS-V APFE :model.board for unibuild.
+       CTS-V APFE :board.board for non-unibuild.
+
     Args:
       dir_path: Results directory path.
     """
     for item in self.build_info_list:
-      gsutil_msg_apfe = ('gsutil cp -r {0}/{1}-release/ '
+      gsutil_msg_apfe = ('gsutil cp -r {0}/{1}.{2}-release/ '
                          'gs://chromeos-ctsverifier-results/'
-                         .format(dir_path, item[1]))
+                         .format(dir_path, item[2], item[1]))
       gsutil_msg_cts = ('gsutil cp -r {0}/{1}_{2}/ '
                         'gs://chromeos-cts-results/ctsVerifier'
-                        .format(dir_path, item[2], item[1]))
+                        .format(dir_path, item[3], item[1]))
       print(self.BOLD +
             self.C_PURPLE +
             gsutil_msg_cts +
@@ -129,8 +132,9 @@ class UploadCtsVerifier(UploadUtils):
     result = tag_list[1]
     suite_version = tag_list[2]
     build_board = tag_list[3]
-    build_id_n = tag_list[4]
-    test = tag_list[5]
+    build_model = tag_list[4]
+    build_id_n = tag_list[5]
+    test = tag_list[6]
     split_file_list = self.SplitFileName(abs_input_file_path)
     basename = split_file_list[1]
     full_base_name = os.path.join(dir_path, basename)
@@ -145,10 +149,11 @@ class UploadCtsVerifier(UploadUtils):
     verifier_info = xml_doc.getElementsByTagName(result)
     suite_version = verifier_info[0].attributes[suite_version].value
     build_board = build[0].attributes[build_board].value
+    build_model = build[0].attributes[build_model].value
     build_id = build[0].attributes[build_id_n].value
     tests = xml_doc.getElementsByTagName(test)
     self.UpdateBuildInfoList(
-        [basename, build_board, build_id, suite_version])
+        [basename, build_board, build_model, build_id, suite_version])
     return tests
 
   def ProcessFilesToUpload(self, input_build_id, dir_path):
@@ -171,7 +176,7 @@ class UploadCtsVerifier(UploadUtils):
         self.ExtractZipFile(full_file, dir_path)
         tests = self.ParseXmlFile(the_file, dir_path)
         for item in self.build_info_list:
-          build_id = item[2]
+          build_id = item[3]
         if build_id == input_build_id:
           self.valid_files_exist = True
           self.failed_tests_exist = False
