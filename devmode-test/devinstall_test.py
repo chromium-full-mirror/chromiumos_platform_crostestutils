@@ -92,6 +92,7 @@ class DevModeTest(object):
 
   def _WipeDevInstall(self):
     """Wipes the devinstall state."""
+    logging.info('Wiping /usr/local/bin from the image.')
     r_mount_point = os.path.join(self.tmpdir, 'm')
     s_mount_point = os.path.join(self.tmpdir, 's')
     dev_image_path = os.path.join(s_mount_point, 'dev_image')
@@ -115,7 +116,6 @@ class DevModeTest(object):
     shutil.copyfile(vm_path, self.working_image_path)
     logging.debug('Copy of vm image stored at %s.', self.working_image_path)
 
-    logging.info('Wiping /usr/local/bin from the image.')
     self._WipeDevInstall()
 
     self.port = remote_access.GetUnusedPort()
@@ -126,6 +126,8 @@ class DevModeTest(object):
 
     self.device = remote_access.ChromiumOSDevice(
         remote_access.LOCALHOST, port=self.port, base_dir=self.tmpdir)
+    if not self.device.MountRootfsReadWrite():
+      raise TestError('Failed to make rootfs writeable')
 
     if not self.binhost:
       logging.info('Starting the devserver.')
@@ -146,8 +148,10 @@ class DevModeTest(object):
            '"/usr/bin/dev_install --yes --binhost %s"' % self.binhost])
 
       logging.info('Verifying that python works on the image.')
-      self.device.RunCommand(['sudo', '-u', 'chronos', '--', 'python', '-c',
-                              '"print \'hello world\'"'])
+      # crbug.com/955147: /usr/local/bin/python symlink doesn't exist.
+      # Use python-wrapper instead.
+      self.device.RunCommand(['sudo', '-u', 'chronos', '--', 'python-wrapper',
+                              '-c', '"print \'hello world\'"'])
     except (cros_build_lib.RunCommandError,
             remote_access.SSHConnectionError) as e:
       self.devserver.PrintLog()
