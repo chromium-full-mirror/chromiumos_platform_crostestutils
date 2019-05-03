@@ -37,10 +37,7 @@ class CTest(object):
     crosutils_root: Location of crosutils.
     jobs: Numbers of threads to run in parallel.
     no_graphics: boolean: If True, disable graphics during vm test.
-    payload_signing_key: Signs payloads with this key.
-    public_key: Loads key to verify signed payloads.
     remote: ip address for real test harness run.
-    sign_payloads: Build some payloads with signed keys.
     target: Target image to test.
     test_results_root: Root directory to store au_test_harness results.
     type: which test harness to run.  Possible values: real, vm, gce.
@@ -59,37 +56,15 @@ class CTest(object):
     self.crosutils_root = os.path.join(constants.SOURCE_ROOT, 'src', 'scripts')
     self.no_graphics = opts.no_graphics
     self.remote = opts.remote
-    # TODO(sosa):  Remove once signed payload bug is resolved.
-    #self.sign_payloads = not opts.cache
-    self.sign_payloads = False
     self.target = opts.target_image
     self.test_results_root = opts.test_results_root
     self.type = opts.type
     self.whitelist_chrome_crashes = opts.whitelist_chrome_crashes
-
-    self.public_key = None
-    if self.sign_payloads:
-      self.payload_signing_key = os.path.realpath(
-          os.path.join(self.crosutils_root, '..', 'platform', 'update_engine',
-                       'unittest_key.pem'))
-    else:
-      self.payload_signing_key = None
-
     self.jobs = opts.jobs
 
     # An optional ssh private key used for testing.
     self.ssh_private_key = opts.ssh_private_key
     self.ssh_port = opts.ssh_port
-
-  def GeneratePublicKey(self):
-    """Returns the path to a generated public key from the UE private key."""
-    # Just output to local directory.
-    public_key_path = 'public_key.pem'
-    logging.info('Generating public key from private key.')
-    cros_build_lib.RunCommand(
-        ['openssl', 'rsa', '-in', self.payload_signing_key, '-pubout',
-         '-out', public_key_path], print_cmd=False)
-    self.public_key = public_key_path
 
   def FindTargetAndBaseImages(self):
     """Initializes the target and base images for CTest."""
@@ -134,10 +109,6 @@ class CTest(object):
 
     if full:
       cmd.append('--full_suite')
-      # This only is compatible with payload signing.
-      if self.sign_payloads:
-        cmd.append('--public_key=%s' % self.public_key)
-        cmd.append('--private_key=%s' % self.payload_signing_key)
     else:
       cmd.append('--basic_suite')
 
@@ -198,10 +169,6 @@ class CTest(object):
       cmd.append('--no_graphics')
     if self.whitelist_chrome_crashes:
       cmd.append('--whitelist_chrome_crashes')
-
-    # We did not generate signed payloads if this is a |quick_update| test.
-    if not quick_update and self.sign_payloads:
-      cmd.append('--payload_signing_key=%s' % self.payload_signing_key)
 
     # Give tests 10 minutes to clean up before shut down.
     res = cros_build_lib.RunCommand(cmd, cwd=self.crosutils_root,
@@ -277,8 +244,6 @@ def main():
       setattr(opts, x, os.path.abspath(val))
 
   ctest = CTest(opts)
-  if ctest.sign_payloads:
-    ctest.GeneratePublicKey()
   ctest.FindTargetAndBaseImages()
   if not opts.only_verify:
     ctest.GenerateUpdatePayloads(not opts.quick_update)

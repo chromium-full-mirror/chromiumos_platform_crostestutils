@@ -23,7 +23,6 @@ import hashlib
 import optparse
 import os
 import pickle
-import shutil
 import sys
 
 import constants
@@ -40,7 +39,6 @@ from chromite.lib.paygen import paygen_stateful_payload_lib
 
 from crostestutils.au_test_harness import cros_au_test_harness
 
-from crostestutils.lib import public_key_manager
 from crostestutils.lib import test_helper
 
 
@@ -63,15 +61,13 @@ class UpdatePayload(object):
   Variables:
     target: Create payload for this image.
     base: If not None, a delta payload with this image as the source.
-    key: If set, signed payload using this private key.
     for_vm: Whether we want the payload for a VM image.
   """
   NAME_SPLITTER = '_'
 
-  def __init__(self, target, base, key=None, for_vm=False):
+  def __init__(self, target, base, for_vm=False):
     self.base = base
     self.target = target
-    self.key = key
     self.for_vm = for_vm
 
     self.payload_dir = None
@@ -80,8 +76,8 @@ class UpdatePayload(object):
 
   def UpdateId(self):
     """Generates a unique update id the test harness can understand."""
-    return dev_server_wrapper.GenerateUpdateId(self.target, self.base,
-                                               self.key, self.for_vm)
+    return dev_server_wrapper.GenerateUpdateId(self.target, self.base, None,
+                                               self.for_vm)
 
   def _CalculateUpdateCacheLabel(self):
     """Calculates the label associated with this payload.
@@ -92,16 +88,11 @@ class UpdatePayload(object):
     if self.base:
       self.label += _GetFileMd5(self.base) + '_'
     self.label += _GetFileMd5(self.target)
-    if self.key:
-      self.label += '+' + _GetFileMd5(self.key)
 
   def __str__(self):
     my_repr = self.target
     if self.base:
       my_repr = self.base + '->' + my_repr
-
-    if self.key:
-      my_repr = my_repr + '+' + self.key
 
     if self.for_vm:
       my_repr = my_repr + '+' + 'for_vm'
@@ -129,16 +120,11 @@ class UpdatePayloadGenerator(object):
     """
     self.target = options.target
     self.base = options.base
-    self.target_signed = None  # Set later when creating the image.
 
     # For vm tests we use the _qemu name for the images.  Regardless of vm or
     # non vm, these no_vm names are guaranteed to be non-qemu base/target names.
     self.base_no_vm = self.base
     self.target_no_vm = self.target
-
-    # Keys.
-    self.public_key = options.public_key
-    self.private_key = options.private_key
 
     # Affect what payloads we create.
     self.board = options.board
@@ -151,9 +137,9 @@ class UpdatePayloadGenerator(object):
     self.vm = _ShouldGenerateVM(options)
 
 
-  def _AddUpdatePayload(self, target, base, key=None, for_vm=False):
+  def _AddUpdatePayload(self, target, base, for_vm=False):
     """Adds a new required update payload.  If base is None, a full payload."""
-    payload = UpdatePayload(target, base, key, for_vm)
+    payload = UpdatePayload(target, base, for_vm)
 
     payload.payload_dir = os.path.join(self.PATH_TO_CACHE_DIR, payload.label)
 
@@ -165,15 +151,6 @@ class UpdatePayloadGenerator(object):
       self.target = test_helper.CreateVMImage(self.target, self.board)
 
     if self.full_suite:
-      if self.public_key:
-        self.target_signed = self.target + '.signed'
-        if not os.path.exists(self.target_signed):
-          logging.info('Creating a signed image for signed payload test.')
-          shutil.copy(self.target, self.target_signed)
-
-        public_key_manager.PublicKeyManager(self.target_signed,
-                                            self.public_key).AddKeyToImage()
-
       # The full suite may not have a VM image produced for the test image yet.
       # Ensure this is created.
       self.base = test_helper.CreateVMImage(self.base, self.board)
@@ -187,11 +164,6 @@ class UpdatePayloadGenerator(object):
 
       # N->N after N-1->N.
       self._AddUpdatePayload(self.target, self.target, for_vm=self.vm)
-
-      # Need a signed payload for the signed payload test.
-      if self.target_signed:
-        self._AddUpdatePayload(self.target_signed, self.target_signed,
-                               self.private_key, for_vm=self.vm)
 
     if self.basic_suite:
       # Update image to itself from VM base.
@@ -217,16 +189,14 @@ class UpdatePayloadGenerator(object):
       """
       payload_file = os.path.join(payload.payload_dir, 'update.gz')
 
-      logging.info('Generating a%s %s payload %s to %s %s',
-                   ' signed' if payload.key else 'n unsigned',
+      logging.info('Generating a %s payload %s to %s %s',
                    'delta' if payload.base else 'full',
                    ('from %s' % payload.base) if payload.base else '',
                    payload.target,
                    'and not patching the kernel.' if payload.for_vm else '')
 
       paygen_payload_lib.GenerateUpdatePayload(payload.target, payload_file,
-                                               src_image=payload.base,
-                                               private_key=payload.key)
+                                               src_image=payload.base)
 
       # Generating the stateful update as devserver would've done.
       paygen_stateful_payload_lib.GenerateStatefulPayload(payload.target,
@@ -277,13 +247,6 @@ def CheckOptions(parser, options):
   if not os.path.isfile(options.base):
     parser.error('Base image must exist.')
 
-  if options.private_key:
-    if not os.path.isfile(options.private_key):
-      parser.error('Private key must exist.')
-
-    if not os.path.isfile(options.public_key):
-      parser.error('Public key must exist.')
-
   if _ShouldGenerateVM(options):
     if not options.board:
       parser.error('Board must be set to generate update '
@@ -303,10 +266,6 @@ def main():
   # Options related to how to generate test payloads for the test harness.
   parser.add_option('--novm', default=True, action='store_false', dest='vm',
                     help='Test Harness payloads will not be tested in a VM.')
-  parser.add_option('--private_key',
-                    help='Private key to sign payloads for test harness.')
-  parser.add_option('--public_key',
-                    help='Public key to verify payloads for test harness.')
 
   # Options related to the images to test.
   parser.add_option('--board', help='Board used for the images.')
