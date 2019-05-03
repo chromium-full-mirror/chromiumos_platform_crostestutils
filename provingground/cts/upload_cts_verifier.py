@@ -65,16 +65,23 @@ class UploadCtsVerifier(UploadUtils):
   def PrintGsutilLinks(self, dir_path):
     """Prints gsutil links to upload results to CTS dashboard and APFE buckets.
 
-       CTS-V APFE :model.board for unibuild.
        CTS-V APFE :board.board for non-unibuild.
+       CTS-V APFE :model.board for unibuild.
+       Appended veyron_ and auron_ to model name for veyron and auron boards.
+       Sample:auron_yuna.auron_yuna-release,veyron_mighty.veyron_mighty-release
 
     Args:
       dir_path: Results directory path.
     """
     for item in self.build_info_list:
-      gsutil_msg_apfe = ('gsutil cp -r {0}/{1}.{2}-release/ '
-                         'gs://chromeos-ctsverifier-results/'
-                         .format(dir_path, item[2], item[1]))
+      if item[1].startswith('veyron') or item[1].startswith('auron'):
+        gsutil_msg_apfe = ('gsutil cp -r {0}/{1}.{2}-release/ '
+                           'gs://chromeos-ctsverifier-results/'
+                           .format(dir_path, item[1], item[1]))
+      else:
+        gsutil_msg_apfe = ('gsutil cp -r {0}/{1}.{2}-release/ '
+                           'gs://chromeos-ctsverifier-results/'
+                           .format(dir_path, item[2], item[1]))
       gsutil_msg_cts = ('gsutil cp -r {0}/{1}_{2}/ '
                         'gs://chromeos-cts-results/ctsVerifier'
                         .format(dir_path, item[3], item[1]))

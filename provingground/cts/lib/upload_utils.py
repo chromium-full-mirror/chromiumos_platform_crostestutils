@@ -258,7 +258,10 @@ class UploadUtils(object):
     build_model = self.build_info_list[-1][2]
     build_board = self.build_info_list[-1][1]
     build_id_folder = self.build_info_list[-1][3]
-    release_folder = '%s.%s-release' % (build_model, build_board)
+    if build_board.startswith('veyron_') or build_board.startswith('auron_'):
+      release_folder = '%s.%s-release' % (build_board, build_board)
+    else:
+      release_folder = '%s.%s-release' % (build_model, build_board)
     manual_folder = 'manual'
     apfe_path = os.path.join(dir_path, release_folder, build_id_folder,
                              manual_folder)
@@ -279,7 +282,11 @@ class UploadUtils(object):
     build_board = self.build_info_list[-1][1]
     build_model = self.build_info_list[-1][2]
     build_id_folder = self.build_info_list[-1][3]
-    release_folder = '%s.%s-release' %(build_model, build_board)
+
+    if build_board.startswith('veyron_') or build_board.startswith('auron_'):
+      release_folder = '%s.%s-release' % (build_board, build_board)
+    else:
+      release_folder = '%s.%s-release' %(build_model, build_board)
     apfe_path = os.path.join(dir_path, release_folder, build_id_folder)
     if not os.path.exists(apfe_path):
       os.makedirs(apfe_path)

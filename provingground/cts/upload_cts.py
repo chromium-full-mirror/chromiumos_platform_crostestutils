@@ -105,14 +105,21 @@ class UploadCts(UploadUtils):
 
        Sample APFE:board.board for non-unibuild.
        Sample APFE:model.board for unibuild.
+       Append veyron_ and auron_ to model name for veyron and auron boards.
+       Sample:auron_yuna.auron_yuna-release,veyron_mighty.veyron_mighty-release
 
     Args:
       dir_path: Results directory path.
     """
     for item in self.build_info_list:
       if self.test_board_name != item[1]:
-        print('gsutil cp -r {0}/{1}.{2}-release/ gs://chromeos-cts-apfe/'
-              .format(dir_path, item[2], item[1]))
+        if item[1].startswith('veyron') or item[1].startswith('auron'):
+          print('gsutil cp -r {0}/{1}.{2}-release/ '
+                'gs://chromeos-cts-apfe/'
+                .format(dir_path, item[1], item[1]))
+        else:
+          print('gsutil cp -r {0}/{1}.{2}-release/ gs://chromeos-cts-apfe/'
+                .format(dir_path, item[2], item[1]))
         print('gsutil cp -r {0}/{1}_{2}/ '
               'gs://chromeos-cts-results/manual'
               .format(dir_path, item[3], item[1]))
