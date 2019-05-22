@@ -82,7 +82,7 @@ class VMAUWorker(au_worker.AUWorker):
 
   def _UpdateCmd(self, log_directory, stateful_change):
     """Update command to use."""
-    cmd = ['%s/cros_run_vm_test' % chromite_constants.CHROMITE_BIN_DIR,
+    cmd = ['%s/cros_run_test' % chromite_constants.CHROMITE_BIN_DIR,
            '--board=%s' % self.board,
            '--image-path=%s' % self.vm_image_path,
            '--ssh-port=%s' % self._ssh_port,
@@ -156,7 +156,7 @@ class VMAUWorker(au_worker.AUWorker):
     # for additional steps.
     if not test:
       test = self.verify_suite
-    command = ['./cros_run_vm_test',
+    command = ['./cros_run_test',
                '--board=%s' % self.board,
                '--image-path=%s' % self.vm_image_path,
                '--ssh-port=%s' % self._ssh_port,
