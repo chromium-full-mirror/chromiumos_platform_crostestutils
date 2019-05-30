@@ -7,10 +7,10 @@
 
 set -e
 
-SHILL_START_LOCK_PATH="/var/lock/shill-start.lock"
+SHILL_START_LOCK_PATH="/run/lock/shill-start.lock"
 WIFI_CRED=/usr/local/etc/wifi_cred
 
-# See code in src/thirdparty/autotest/files/client/cros/power_suspend.py
+# See do_suspend() in src/third_party/autotest/files/client/cros/power/sys_power.py
 PAUSE_FILE=/run/autotest_pause_ethernet_hook
 paused_time=0
 
@@ -214,17 +214,40 @@ restart_connection_manager() {
   initctl start shill
 }
 
+try_pause_lock() {
+  # Append, to avoid changing the mtime of an existing lock if we don't acquire
+  # it.
+  if ! exec 9>>"${PAUSE_FILE}"; then
+    critical_msg "Failed to open ${PAUSE_FILE}"
+    return 1
+  fi
+  if ! flock -xn 9; then
+    critical_msg "Failed to acquire ${PAUSE_FILE}"
+    return 1
+  fi
+}
+
+# Clear old locks and try to grab the lock. Does not block, and aborts if we
+# fail.
+force_pause_lock() {
+  critical_msg "Clobbering lock (${PAUSE_FILE})"
+  rm -f "${PAUSE_FILE}"
+  try_pause_lock || exit 1
+}
+
+# Return 0 if we need to pause (abort). Return non-zero and grab the "pause"
+# lock if we can continue.
 pause_check_ethernet() {
-  paused_time=0
   # power_SuspendStress tests requires many minutes of network timeout
   # tolerance since the SSH connection to the autotest server will be
   # disrupted.   *** See http://crbug.com/334951 ***
   #
   # "Pause" the ethernet check for up to 30 minutes at the
   # request of any test that creates and flocks PAUSE_FILE.
-  if  flock -xn "${PAUSE_FILE}" -c : ; then
-    # file wasn't locked - can try to recover ethernet link.
-    rm -f "${PAUSE_FILE}"
+
+  # Acquire the lock and hold it until exit, if possible.
+  if try_pause_lock; then
+    # File wasn't locked - no need to pause.
     return 1
   fi
 
@@ -235,10 +258,20 @@ pause_check_ethernet() {
   start_time=$(stat -c%Z "${PAUSE_FILE}") || true
 
   if [ -z "${start_time}" ]; then
-      return 1
+    # Couldn't figure out lock time - just clobber it.
+    force_pause_lock
+    return 1
   fi
 
+  local paused_time
   paused_time=$((now - start_time))
+  if [ ${paused_time} -gt $((30*60)) ] ; then
+    critical_msg "Pause request exceeded 30 minutes. Checking lab network link."
+    force_pause_lock
+    return 1
+  fi
+
+  info_msg "Ethernet Check Pause started ${paused_time} seconds ago."
   return 0
 }
 
@@ -251,20 +284,13 @@ main() {
     return 0
   fi
 
+  if pause_check_ethernet; then
+    return 0
+  fi
+
   local recovery_method
 
   for recovery_method in toggle_usb_ports reload_ethernet_drivers; do
-    if pause_check_ethernet ; then
-      # pause_check_ethernet() sets up $paused_time.
-      if [ ${paused_time} -gt $((30*60)) ] ; then
-        critical_msg "Pause request exceeded 30 minutes. Checking lab network link."
-        rm -f "${PAUSE_FILE}"
-      else
-        info_msg "Ethernet Check Pause started ${paused_time} seconds ago."
-        return 0
-      fi
-    fi
-
     # Attempt to ping our controlling autotest server over ethernet.
     if ping_controlling_server; then
       return 0
