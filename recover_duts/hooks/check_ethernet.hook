@@ -36,22 +36,7 @@ get_default_gateway() {
   echo "${ip_route}" | head -n 1 | cut -f 3 -d ' '
 }
 
-rescan_usb_hubs() {
-  local port
-  local portnum
-  local usbhub=/sys/bus/usb/drivers/hub
-
-  for port in "${usbhub}"/[0-9]*-0:1.0; do
-    critical_msg "Rescanning  ${port}"
-    portnum="$(basename "${port}")"
-    echo "${portnum}" > "${usbhub}"/unbind
-    sleep 1
-    echo "${portnum}" > "${usbhub}"/bind
-    # USB needs a bit of time to scan the "hub"
-    sleep 3
-  done
-}
-
+# Shows the list of Ethernet interfaces found on the system.
 # Optional arg: when non-empty, only check for operational links.
 search_devices() {
   local device_path
@@ -86,37 +71,13 @@ search_devices() {
   done
 }
 
-# Shows the list of Ethernet interfaces found on the system.
-# Optional arg: when non-empty, only check for operational links.
-find_ethernet_interfaces() {
-  local interfaces
-  local operational="$1"
-
-  interfaces=$(search_devices "${operational}")
-  if [ -z "${interfaces}" ] ; then
-    # didn't find any eth devices.
-    # Some possible causes are:
-    #   crbug.com/452686 RT8153 (USB3-GigE) dongle coming up as USB-storage
-    #                    (Fixed: "mist" will reset back to ethernet device)
-    #   crbug.com/733425 USB enumeration fails with
-    #                    "device not accepting address 2, error -71"
-    info_msg "No ethernet found: Rescanning USB hubs"
-    rescan_usb_hubs
-
-    # check again
-    interfaces=$(search_devices "${operational}")
-  fi
-  echo "$interfaces"
-}
-
-
 # Pings the given ipaddress through all operational ethernet devices
 # $1 - IP address to ping.
 do_ping() {
   local ip_addr=$1
   local eth
 
-  for eth in $(find_ethernet_interfaces 1); do
+  for eth in $(search_devices 1); do
     ping -q -I "${eth}" -c 9 "${ip_addr}" && return 0
   done
 
@@ -134,7 +95,7 @@ find_ethernet_neighbor() {
   local eth
   local neighbor_ip
 
-  for eth in $(find_ethernet_interfaces 1); do
+  for eth in $(search_devices 1); do
     neighbor_ip=$(ip -4 neigh show dev "${eth}" |
                   awk '/REACHABLE|DELAY|STALE/ {print $1; exit}')
     [ -n "${neighbor_ip}" ] && echo "${neighbor_ip}" && return 0
@@ -168,7 +129,7 @@ ping_controlling_server() {
 reload_ethernet_drivers() {
   local eth
   local ret=1
-  for eth in $(find_ethernet_interfaces); do
+  for eth in $(search_devices); do
     info_msg "Reload driver for interface ${eth}"
     reload_network_device "${eth}"
     ret=0
@@ -201,6 +162,45 @@ toggle_usb_ports() {
     fi
   done
   return ${ret}
+}
+
+# If there are no devices available, rescan all hubs.
+rescan_usb_hubs() {
+  local port
+  local portnum
+  local usbhub=/sys/bus/usb/drivers/hub
+
+  # If there's an operational Ethernet interface, no need to reset any hubs.
+  if [ -n "$(search_devices 1)" ]; then
+    return 1
+  fi
+
+  # Didn't find any eth devices.
+  # Some possible causes are:
+  #   crbug.com/452686 RT8153 (USB3-GigE) dongle coming up as USB-storage
+  #                    (Fixed: "mist" will reset back to ethernet device)
+  #   crbug.com/733425 USB enumeration fails with
+  #                    "device not accepting address 2, error -71"
+  info_msg "No ethernet found: Rescanning USB hubs"
+
+  for port in "${usbhub}"/[0-9]*-0:1.0; do
+    # Doesn't exist. Glob didn't match anything?
+    [ -e "${port}" ] || continue
+
+    critical_msg "Rescanning ${port}"
+    portnum="$(basename "${port}")"
+    echo "${portnum}" > "${usbhub}"/unbind
+    sleep 1
+    echo "${portnum}" > "${usbhub}"/bind
+  done
+
+  # Return status: *now* do we have any devices?
+  for _ in $(seq 1 5); do
+    # USB needs a bit of time to scan the "hub".
+    sleep 3
+    [ -n "$(search_devices 1)" ] && return 0
+  done
+  return 1
 }
 
 restart_connection_manager() {
@@ -296,7 +296,9 @@ main() {
   fi
 
   local recovery_method
-  for recovery_method in toggle_usb_ports reload_ethernet_drivers; do
+  for recovery_method in rescan_usb_hubs \
+                         toggle_usb_ports \
+                         reload_ethernet_drivers; do
     critical_msg "Attempting recovery method \"${recovery_method}\""
 
     # A success return from the recovery method implies that it successfully
