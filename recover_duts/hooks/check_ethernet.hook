@@ -291,14 +291,13 @@ main() {
     return 0
   fi
 
+  # Attempt to ping our controlling autotest server over ethernet.
+  if ping_controlling_server; then
+    return 0
+  fi
+
   local recovery_method
-
   for recovery_method in toggle_usb_ports reload_ethernet_drivers; do
-    # Attempt to ping our controlling autotest server over ethernet.
-    if ping_controlling_server; then
-      return 0
-    fi
-
     critical_msg "Attempting recovery method \"${recovery_method}\""
 
     # A success return from the recovery method implies that it successfully
