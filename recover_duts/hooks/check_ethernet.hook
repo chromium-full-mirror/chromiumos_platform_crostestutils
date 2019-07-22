@@ -123,7 +123,6 @@ do_ping() {
   return 1
 }
 
-# Restart all our ethernet devices and restart shill.
 # Return the remote IP address of the first established SSH connection
 find_ssh_client() {
   netstat -lanp | awk '/tcp.*:22 .*ESTABLISHED.*/ {split($5,a,":");  \
