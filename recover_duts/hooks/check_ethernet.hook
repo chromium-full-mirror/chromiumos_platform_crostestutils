@@ -67,13 +67,6 @@ search_devices() {
         continue
     fi
 
-    # lab interconnect is full-duplex and tells us so.
-    # devices w/o link won't get listed here
-    if cat "${device_path}/duplex" > /dev/null 2>&1 ; then
-       echo "${device}"
-       continue
-    fi
-
     # ignore "wwan*" devices: they are 3G/4G/LTE modems.
     case "${device}" in
       wwan*|lo) continue;;
