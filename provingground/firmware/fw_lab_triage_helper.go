@@ -7,10 +7,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"reflect"
 	"regexp"
 	"strings"
+	"text/tabwriter"
 )
 
 const labstationTelemetryCmds = "grep guado_labstation-release /etc/lsb-release; " +
@@ -93,10 +95,13 @@ func main() {
 	}
 
 	log.Print("Summarizing DUT info...")
-	// TODO(kmshelton): Use text/tabwriter to make this digestable.
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "Hostname\tBoard\tModel\tStatus\tLabstation\tPort\tLockStatus\tLockReason")
 	for _, dut := range duts {
-		fmt.Printf("%+v\n", dut)
+		fmt.Fprintln(w, dut.Hostname+"\t"+dut.Board+"\t"+dut.Model+"\t"+dut.Status+"\t"+dut.Labstation+"\t"+
+			dut.Port+"\t"+dut.LockStatus+"\t"+dut.LockReason+"\t")
 	}
+	w.Flush()
 
 	log.Print("Gathering and displaying key telemetry for labstations.")
 	// TODO(kmshelton): Do this without keeping two approximately-identical memos.
