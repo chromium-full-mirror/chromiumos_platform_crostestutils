@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -76,22 +77,24 @@ func sendSSHCommand(host, remoteCmd string) (outs string, err error) {
 func main() {
 	duts := []dut{}
 
+	poolPtr := flag.String("pool", "faft-cr50", "A pool of DUTs to operate on.")
+	flag.Parse()
+
 	fmt.Println(warningMessage)
 
 	log.Print("Gathering DUT info via atest...")
-	// TODO(kmshelton): Support arbitrary pools.  Remember to sanitize for chromeos1 (high
-	// touch lab) when adding arbitrary pool support, as we would not want to do operations
-	// like ssh'ing to labstations in the low touch lab.  The current hardcoded pool, it is
-	// safe to assume no low touch lab devices are operated upon.
-	cmd := exec.Command("atest", "host", "list", "--hostnames-only", "--label=pool:faft-cr50")
+
+	cmd := exec.Command("atest", "host", "list", "--hostnames-only", "--label=pool:"+*poolPtr)
 	out, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("<atest host list> encountered: %s", err)
 	}
-	hostnames := strings.Fields(string(out))
 
-	for _, hostname := range hostnames {
-		duts = append(duts, newDut(hostname))
+	// Removing hostnames that don't begin with "chromeos1-" removes those that are not in the firmware lab.
+	for _, hostname := range strings.Fields(string(out)) {
+		if strings.HasPrefix(hostname, "chromeos1-") {
+			duts = append(duts, newDut(hostname))
+		}
 	}
 
 	log.Print("Summarizing DUT info...")
