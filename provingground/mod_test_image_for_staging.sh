@@ -43,6 +43,13 @@ cleanUp() {
   "${SCRIPTS_DIR}/mount_gpt_image.sh" -u -r "$ROOT_FS_DIR"
 }
 
+# Writes stdin to the given file name as root using sudo in append mode.
+#
+# $1 - The output file name.
+sudo_append() {
+  sudo tee -a "$1" >/dev/null
+}
+
 if [ ! -d "$VBOOT_DIR" ]; then
   die "The required path: $VBOOT_DIR does not exist. This directory needs"\
       "to be sync'd into your chroot.\n $ cros_workon start vboot_reference"
