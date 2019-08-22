@@ -503,7 +503,6 @@ run_once() {
 
   if [ ${FLAGS_reboot_after_update} -eq ${FLAGS_FALSE} ]; then
     echo "Not rebooting because of --noreboot_after_update"
-    print_time_elapsed
     return 0
   fi
 
@@ -532,8 +531,6 @@ run_once() {
     local release_description=$(echo ${REMOTE_OUT} | cut -d '=' -f 2)
     info "Update was successful and rebooted to $release_description"
   fi
-
-  print_time_elapsed
 }
 
 main() {
@@ -556,6 +553,7 @@ main() {
     echo "Iteration: " $i of ${FLAGS_repeat}
     run_once
     if [ ${FLAGS_repeat} -gt 1 ]; then
+      print_time_elapsed
       remote_sh "${UPDATER_BIN} --reset_status 2> /dev/null"
     fi
   done
