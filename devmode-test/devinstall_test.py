@@ -142,11 +142,10 @@ class DevModeTest(object):
           ['bash', '-l', '-c',
            '"/usr/bin/dev_install --yes --binhost=%s"' % self.binhost])
 
-      logging.info('Verifying that python works on the image.')
-      # crbug.com/955147: /usr/local/bin/python symlink doesn't exist.
-      # Use python-wrapper instead.
-      self.device.RunCommand(['sudo', '-u', 'chronos', '--', 'python-wrapper',
-                              '-c', '"print(\'hello world\')"'])
+      logging.info('Verifying that all python versions work on the image.')
+      for prog in ('python', 'python2', 'python3'):
+        self.device.RunCommand(['sudo', '-u', 'chronos', '--', prog,
+                                '-c', '"print(\'hello world\')"'])
     except (cros_build_lib.RunCommandError,
             remote_access.SSHConnectionError) as e:
       self.devserver.PrintLog()
