@@ -145,7 +145,7 @@ class DevModeTest(object):
       logging.info('Running dev install in the vm.')
       self.device.RunCommand(
           ['bash', '-l', '-c',
-           '"/usr/bin/dev_install --yes --binhost %s"' % self.binhost])
+           '"/usr/bin/dev_install --yes --binhost=%s"' % self.binhost])
 
       logging.info('Verifying that python works on the image.')
       # crbug.com/955147: /usr/local/bin/python symlink doesn't exist.
