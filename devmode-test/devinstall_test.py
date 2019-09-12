@@ -151,7 +151,7 @@ class DevModeTest(object):
       # crbug.com/955147: /usr/local/bin/python symlink doesn't exist.
       # Use python-wrapper instead.
       self.device.RunCommand(['sudo', '-u', 'chronos', '--', 'python-wrapper',
-                              '-c', '"print \'hello world\'"'])
+                              '-c', '"print(\'hello world\')"'])
     except (cros_build_lib.RunCommandError,
             remote_access.SSHConnectionError) as e:
       self.devserver.PrintLog()
