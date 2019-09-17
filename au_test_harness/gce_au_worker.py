@@ -124,8 +124,8 @@ class GCEAUWorker(au_worker.AUWorker):
                   proxy_port=None, payload_signing_key=None):
     """Updates the image on the GCE instance.
 
-    Unlike vm_au_worker or real_au_worker, UpdateImage always creates a new
-    image and a new instance.
+    Unlike vm_au_worker, UpdateImage always creates a new image and a new
+    instance.
     """
     # Delete existing resources in the background if any.
     bg_delete = Process(target=self._DeleteExistingResources)

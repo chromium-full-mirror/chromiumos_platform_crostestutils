@@ -22,7 +22,6 @@ from chromite.lib import dev_server_wrapper
 from chromite.lib import signals
 from crostestutils.au_test_harness import cros_test_proxy
 from crostestutils.au_test_harness import gce_au_worker
-from crostestutils.au_test_harness import real_au_worker
 from crostestutils.au_test_harness import update_exception
 from crostestutils.au_test_harness import vm_au_worker
 
@@ -63,7 +62,7 @@ class AUTest(unittest.TestCase):
     elif  options.type == 'gce':
       cls.worker_class = gce_au_worker.GCEAUWorker
     else:
-      cls.worker_class = real_au_worker.RealAUWorker
+      raise ValueError('Invalid au_worker type: %s' % options.type)
 
     # Cache away options to instantiate workers later.
     cls.options = options
@@ -339,7 +338,7 @@ class AUTest(unittest.TestCase):
       frame: Current stack frame. See signal.signal for details on |signum| and
           |frame|.
     """
-    logging.warning('Received signal %d' % signum)
+    logging.warning('Received signal %d', signum)
     if signum:
       # If we've been invoked because of a signal, ignore delivery of that
       # signal from this point forward. The invoking context of this method
@@ -353,5 +352,5 @@ class AUTest(unittest.TestCase):
       signal.signal(signal.SIGTERM, signal.SIG_IGN)
     self.worker.CleanUp()
     if not signals.RelaySignal(original_handler, signum, frame):
-      logging.warning('Failed to relay signal %d to original handler.' % signum)
+      logging.warning('Failed to relay signal %d to original handler.', signum)
       sys.exit('Received signal %d.' % signum)

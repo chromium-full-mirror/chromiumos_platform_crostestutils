@@ -125,7 +125,7 @@ def CheckOpts(parser, opts):
     opts: Parsed opts.
   """
 
-  if not opts.type in ['real', 'vm', 'gce']:
+  if not opts.type in ['vm', 'gce']:
     parser.error('Failed to specify valid test type.')
 
   def _IsValidImage(image):
@@ -203,7 +203,7 @@ def main():
                       help='Only runs tests with specific prefix i.e. '
                       'testFullUpdateWipeStateful.')
   parser.add_argument('-p', '--type', default='vm',
-                      help='type of test to run: [vm, real, gce]. Default: vm.')
+                      help='type of test to run: [vm, gce]. Default: vm.')
   parser.add_argument('--verbose', default=True, action='store_true',
                       help='Print out rather than capture output as much as '
                       'possible.')
@@ -256,12 +256,8 @@ def main():
       if (opts.type == 'vm' or opts.type == 'gce') and opts.parallel:
         _RunTestsInParallel(opts)
       else:
-        # TODO(sosa) - Take in a machine pool for a real test.
-        # Can't run in parallel with only one remote device.
-        test_suite = _PrepareTestSuite(opts)
-        test_result = unittest.TextTestRunner().run(test_suite)
-        if not test_result.wasSuccessful():
-          cros_build_lib.Die('Test harness failed.')
+        cros_build_lib.Die('Test harness failed. unsupported test type %s' %
+                           opts.type)
 
     finally:
       if my_server:
