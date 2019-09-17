@@ -28,11 +28,11 @@ from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
 from chromite.lib import dev_server_wrapper
+from chromite.lib import image_lib
 from chromite.lib import osutils
 from chromite.lib import remote_access
 from chromite.lib import vm
 
-from crostestutils.lib import mount_helper
 from crostestutils.lib import test_helper
 
 
@@ -93,16 +93,11 @@ class DevModeTest(object):
   def _WipeDevInstall(self):
     """Wipes the devinstall state."""
     logging.info('Wiping /usr/local/bin from the image.')
-    r_mount_point = os.path.join(self.tmpdir, 'm')
-    s_mount_point = os.path.join(self.tmpdir, 's')
-    dev_image_path = os.path.join(s_mount_point, 'dev_image')
-    mount_helper.MountImage(self.working_image_path,
-                            r_mount_point, s_mount_point, read_only=False,
-                            safe=True)
-    try:
+    with image_lib.LoopbackPartitions(
+        self.working_image_path, destination=self.tmpdir) as image:
+      image.Mount(('STATE',), mount_opts=())
+      dev_image_path = os.path.join(self.tmpdir, 'dir-STATE', 'dev_image')
       osutils.RmDir(dev_image_path, sudo=True)
-    finally:
-      mount_helper.UnmountImage(r_mount_point, s_mount_point)
 
   def PrepareTest(self):
     """Pre-test modification to the image and env to setup test."""
