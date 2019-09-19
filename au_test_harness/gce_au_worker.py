@@ -121,7 +121,7 @@ class GCEAUWorker(au_worker.AUWorker):
     return self.PrepareRealBase(image_path, signed_base)
 
   def UpdateImage(self, image_path, src_image_path='', stateful_change='old',
-                  proxy_port=None, payload_signing_key=None):
+                  proxy_port=None):
     """Updates the image on the GCE instance.
 
     Unlike vm_au_worker, UpdateImage always creates a new image and a new

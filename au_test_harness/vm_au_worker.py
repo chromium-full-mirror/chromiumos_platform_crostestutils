@@ -15,9 +15,7 @@ from chromite.cbuildbot import constants as buildbot_constants
 from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
-from crostestutils.lib import constants
 from crostestutils.au_test_harness import au_worker
-from crostestutils.au_test_harness import update_exception
 
 
 class VMAUWorker(au_worker.AUWorker):
@@ -50,7 +48,7 @@ class VMAUWorker(au_worker.AUWorker):
     # well as the archive stage of cbuildbot. Make a private copy of
     # the VM image, to avoid any conflict.
     _, private_image_path = tempfile.mkstemp(
-        prefix="%s." % buildbot_constants.VM_DISK_PREFIX)
+        prefix='%s.' % buildbot_constants.VM_DISK_PREFIX)
     shutil.copy(self.vm_image_path, private_image_path)
     self.TestInfo('Copied shared disk image %s to %s.' %
                   (self.vm_image_path, private_image_path))
@@ -79,67 +77,6 @@ class VMAUWorker(au_worker.AUWorker):
       shutil.move(self.vm_image_path, fail_directory)
     except shutil.Error as e:
       logging.warning('Ignoring errors while copying VM files: %s', e)
-
-  def _UpdateCmd(self, log_directory, stateful_change):
-    """Update command to use."""
-    cmd = ['%s/cros_run_test' % chromite_constants.CHROMITE_BIN_DIR,
-           '--board=%s' % self.board,
-           '--image-path=%s' % self.vm_image_path,
-           '--ssh-port=%s' % self._ssh_port,
-           self.graphics_flag,
-           '--host-cmd', '--',
-           os.path.join(constants.CROSTESTUTILS_DIR, 'image_to_live.sh'),
-           '--ssh_port=%s' % self._ssh_port,
-           '--noupdate_hostkey',
-           '--update_log=%s' % os.path.join(log_directory, 'update_engine.log'),
-           '--verify',
-           '--remote=127.0.0.1',
-           self.GetStatefulChangeFlag(stateful_change)]
-    if self.ssh_private_key:
-      cmd.append('--private_key=%s' % self.ssh_private_key)
-    return cmd
-
-  def UpdateImage(self, image_path, src_image_path='', stateful_change='old',
-                  proxy_port='', payload_signing_key=None):
-    """Updates VM image with image_path."""
-    log_directory, fail_directory = self.GetNextResultsPath('update')
-    cmd = self._UpdateCmd(log_directory, stateful_change)
-    self.AppendUpdateFlags(cmd, image_path, src_image_path, proxy_port,
-                           payload_signing_key)
-    self.TestInfo(self.GetUpdateMessage(image_path, src_image_path, True,
-                                        proxy_port))
-    try:
-      self.RunUpdateCmd(cmd, log_directory)
-    except update_exception.UpdateException:
-      self._HandleFail(log_directory, fail_directory)
-      raise
-
-  def UpdateUsingPayload(self, update_path, stateful_change='old',
-                         proxy_port=None):
-    """Updates a vm image using image_to_live.sh."""
-    log_directory, fail_directory = self.GetNextResultsPath('update')
-    cmd = self._UpdateCmd(log_directory, stateful_change) + [
-        '--payload=%s' % update_path
-    ]
-    if proxy_port:
-      cmd.append('--proxy_port=%s' % proxy_port)
-    self.TestInfo(self.GetUpdateMessage(update_path, None, True, proxy_port))
-    try:
-      self.RunUpdateCmd(cmd, log_directory)
-    except update_exception.UpdateException:
-      self._HandleFail(log_directory, fail_directory)
-      raise
-
-  def AppendUpdateFlags(self, cmd, image_path, src_image_path, proxy_port,
-                        payload_signing_key, for_vm=False):
-    """Appends common args to an update cmd defined by an array.
-
-    Calls super function with for_vm set to True. See base class for
-    descriptions for arguments.
-    """
-    super(VMAUWorker, self).AppendUpdateFlags(
-        cmd, image_path, src_image_path, proxy_port, payload_signing_key,
-        for_vm=True)
 
   def VerifyImage(self, unittest, percent_required_to_pass=100, test=''):
     # VMAUWorker disregards |unittest| and |percent_required_to_pass|.

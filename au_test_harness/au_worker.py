@@ -15,18 +15,11 @@ from __future__ import print_function
 import inspect
 import os
 
-from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
-from chromite.lib import dev_server_wrapper
-from crostestutils.au_test_harness import update_exception
 
 
 class AUWorker(object):
   """Interface for a worker that updates and verifies images."""
-  # Mapping between cached payloads to directory locations.
-  update_cache = None
-
-  # --- INTERFACE ---
 
   def __init__(self, options, test_results_root):
     """Processes options for the specific-type of worker."""
@@ -84,26 +77,11 @@ class AUWorker(object):
     """
 
   def UpdateImage(self, image_path, src_image_path='', stateful_change='old',
-                  proxy_port=None, payload_signing_key=None):
+                  proxy_port=None):
     """Implementation of an actual update.
 
     Subclasses must override this method with the correct update procedure for
-    the class. See PerformUpdate for args.
-    """
-
-  def UpdateUsingPayload(self, update_path, stateful_change='old',
-                         proxy_port=None):
-    """Updates target with the pre-generated update stored in update_path.
-
-    Subclasses must override this method with the correct update procedure for
     the class.
-
-    Args:
-      update_path: Path to the image to update with. This directory should
-          contain both update.gz, and stateful.image.gz
-      stateful_change: How to perform the stateful update.
-      proxy_port: Port to have the client connect to. For use with
-          CrosTestProxy.
     """
 
   def VerifyImage(self, unittest, percent_required_to_pass=100, test=''):
@@ -122,43 +100,6 @@ class AUWorker(object):
     Returns:
       Returns the percent that passed.
     """
-
-  # --- INTERFACE TO AU_TEST ---
-
-  def PerformUpdate(self, image_path, src_image_path='', stateful_change='old',
-                    proxy_port=None, payload_signing_key=None):
-    """Performs an update using  _UpdateImage and reports any error.
-
-    Subclasses should not override this method but override _UpdateImage
-    instead.
-
-    Args:
-      image_path: Path to the image to update with.  This image must be a test
-          image.
-      src_image_path: Optional.  If set, perform a delta update using the
-          image specified by the path as the source image.
-      stateful_change: How to modify the stateful partition.  Values are:
-          'old': Don't modify stateful partition.  Just update normally.
-          'clean': Uses clobber-state to wipe the stateful partition with the
-              exception of code needed for ssh.
-      proxy_port: Port to have the client connect to. For use with
-          CrosTestProxy.
-      payload_signing_key: Path to the private key to use to sign payloads.
-    Raises an update_exception.UpdateException if _UpdateImage returns an error.
-    """
-    if not self.use_delta_updates:
-      src_image_path = ''
-    key_to_use = payload_signing_key
-
-    self.UpdateImage(image_path, src_image_path, stateful_change, proxy_port,
-                     key_to_use)
-
-  @classmethod
-  def SetUpdateCache(cls, update_cache):
-    """Sets the global update cache for getting paths to devserver payloads."""
-    cls.update_cache = update_cache
-
-  # --- METHODS FOR SUB CLASS USE ---
 
   def PrepareRealBase(self, image_path, signed_base):
     """Prepares a remote device for worker test by updating it to the image."""
@@ -180,63 +121,6 @@ class AUWorker(object):
       self.vm_image_path = self.vm_image_path + '.signed'
 
     return self.vm_image_path
-
-  def GetStatefulChangeFlag(self, stateful_change):
-    """Returns the flag to pass to image_to_vm for the stateful change."""
-    stateful_change_flag = ''
-    if stateful_change:
-      stateful_change_flag = '--stateful_update_flag=%s' % stateful_change
-
-    return stateful_change_flag
-
-  def AppendUpdateFlags(self, cmd, image_path, src_image_path, proxy_port,
-                        payload_signing_key, for_vm=False):
-    """Appends common args to an update cmd defined by an array.
-
-    Modifies cmd in places by appending appropriate items given args.
-
-    Args:
-      cmd: See PerformUpdate.
-      image_path: See PerformUpdate.
-      src_image_path: See PerformUpdate.
-      proxy_port: See PerformUpdate.
-      payload_signing_key: See PerformUpdate.
-      for_vm: Additional optional argument to say that the payload is intended
-          for vm usage (so we don't patch the kernel).
-    """
-    if proxy_port:
-      cmd.append('--proxy_port=%s' % proxy_port)
-    update_id = dev_server_wrapper.GenerateUpdateId(
-        image_path, src_image_path, payload_signing_key,
-        for_vm=for_vm)
-    cache_path = self.update_cache.get(update_id)
-    if cache_path:
-      update_url = dev_server_wrapper.DevServerWrapper.GetDevServerURL(
-          port=proxy_port, sub_dir=cache_path)
-      cmd.append('--update_url=%s' % update_url)
-    else:
-      raise update_exception.UpdateException(
-          1, 'No payload found for %s' % update_id)
-
-  def RunUpdateCmd(self, cmd, log_directory=None):
-    """Runs the given update cmd given verbose options.
-
-    Args:
-      cmd: The shell cmd to run.
-      log_directory: Where to store the logs for this cmd.
-
-    Raises:
-      update_exception.UpdateException: If the update fails.
-    """
-    kwds = dict(print_cmd=False, combine_stdout_stderr=True, error_code_ok=True)
-    if not self.verbose:
-      kwds['redirect_stdout'] = kwds['redirect_stderr'] = True
-    if log_directory:
-      kwds['log_stdout_to_file'] = os.path.join(log_directory, 'update.log')
-    result = cros_build_lib.RunCommand(cmd, **kwds)
-    if result.returncode != 0:
-      logging.warning(result.output)
-      raise update_exception.UpdateException(result.returncode, 'Update failed')
 
   def AssertEnoughTestsPassed(self, unittest, output, percent_required_to_pass):
     """Helper function that asserts a sufficient number of tests passed.

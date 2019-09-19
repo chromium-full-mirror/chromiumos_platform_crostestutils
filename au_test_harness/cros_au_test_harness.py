@@ -17,7 +17,6 @@ from __future__ import print_function
 import argparse
 import functools
 import os
-import pickle
 import sys
 import tempfile
 import unittest
@@ -27,14 +26,15 @@ import constants
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 sys.path.append(constants.SOURCE_ROOT)
 
+# pylint: disable=wrong-import-position
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
-from chromite.lib import dev_server_wrapper
 from chromite.lib import parallel
 from chromite.lib import sudo
 from chromite.lib import timeout_util
+
 from crostestutils.au_test_harness import au_test
-from crostestutils.au_test_harness import au_worker
+
 from crostestutils.lib import test_helper
 
 # File location for update cache in given folder.
@@ -75,22 +75,6 @@ class _LessBacktracingTestRunner(unittest.TextTestRunner):
       if test_result is None or not test_result.wasSuccessful():
         msg = 'Test harness failed. See logs for details.'
         raise parallel.BackgroundFailure(msg)
-
-
-def _ReadUpdateCache(dut_type, target_image):
-  """Reads update cache from generate_test_payloads call."""
-  # TODO(wonderfly): Figure out how to use update cache for GCE images.
-  if dut_type == 'gce':
-    return None
-  path_to_dump = os.path.dirname(target_image)
-  cache_file = os.path.join(path_to_dump, CACHE_FILE)
-
-  if os.path.exists(cache_file):
-    logging.info('Loading update cache from ' + cache_file)
-    with open(cache_file) as file_handle:
-      return pickle.load(file_handle)
-
-  return None
 
 
 def _PrepareTestSuite(opts):
@@ -146,10 +130,6 @@ def CheckOpts(parser, opts):
                  'Given: type=%s, base_image=%s.' %
                  (opts.type, opts.base_image))
 
-  if (opts.payload_signing_key and not
-      os.path.isfile(opts.payload_signing_key)):
-    parser.error('Testing requires a valid path to the private key.')
-
   if opts.ssh_private_key and not os.path.isfile(opts.ssh_private_key):
     parser.error('Testing requires a valid path to the ssh private key.')
 
@@ -187,9 +167,6 @@ def main():
   parser.add_argument('-j', '--jobs',
                       default=test_helper.CalculateDefaultJobs(), type=int,
                       help='Number of simultaneous jobs')
-  parser.add_argument('--payload_signing_key', default=None,
-                      help='Path to the private key used to sign payloads '
-                      'with.')
   parser.add_argument('-q', '--quick_test', default=False, action='store_true',
                       help='Use a basic test to verify image.')
   parser.add_argument('-m', '--remote',
@@ -226,13 +203,6 @@ def main():
 
   CheckOpts(parser, opts)
 
-  # Generate cache of updates to use during test harness.
-  update_cache = _ReadUpdateCache(opts.type, opts.target_image)
-  if not update_cache:
-    msg = ('No update cache found. Update testing will not work.  Run '
-           ' cros_generate_update_payloads if this was not intended.')
-    logging.info(msg)
-
   # Create download folder for payloads for testing.
   download_folder = os.path.join(os.path.realpath(os.path.curdir),
                                  'latest_download')
@@ -243,25 +213,11 @@ def main():
       raise
 
   with sudo.SudoKeepAlive():
-    au_worker.AUWorker.SetUpdateCache(update_cache)
-    my_server = None
-    try:
-      # Only start a devserver if we'll need it.
-      if update_cache:
-        my_server = dev_server_wrapper.DevServerWrapper(
-            port=dev_server_wrapper.DEFAULT_PORT,
-            log_dir=opts.test_results_root)
-        my_server.Start()
-
-      if (opts.type == 'vm' or opts.type == 'gce') and opts.parallel:
-        _RunTestsInParallel(opts)
-      else:
-        cros_build_lib.Die('Test harness failed. unsupported test type %s' %
-                           opts.type)
-
-    finally:
-      if my_server:
-        my_server.Stop()
+    if (opts.type == 'vm' or opts.type == 'gce') and opts.parallel:
+      _RunTestsInParallel(opts)
+    else:
+      cros_build_lib.Die('Test harness failed. unsupported test type %s' %
+                         opts.type)
 
 
 if __name__ == '__main__':

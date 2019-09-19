@@ -17,14 +17,16 @@ import constants
 sys.path.append(constants.SOURCE_ROOT)
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 
+# pylint: disable=wrong-import-position
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
+
 from crostestutils.lib import image_extractor
 from crostestutils.lib import test_helper
 
 
 class TestException(Exception):
-  """Thrown by RunAUTestHarness if there's a test failure."""
+  """Thrown by RunTestHarness if there's a test failure."""
 
 
 class CTest(object):
@@ -92,48 +94,14 @@ class CTest(object):
                    'Using target instead.')
       self.base = self.target
 
-  def GenerateUpdatePayloads(self, full):
-    """Generates payloads for the test harness.
+  def RunTestHarness(self, only_verify, suite):
+    """Runs the test harness (suite:smoke).
 
-    Args:
-      full: Build payloads for full test suite.
-    """
-    generator = ('../platform/crostestutils/'
-                 'generate_test_payloads/cros_generate_test_payloads.py')
-
-    cmd = [generator]
-    cmd.append('--target=%s' % self.target)
-    cmd.append('--base=%s' % self.base)
-    cmd.append('--board=%s' % self.board)
-    cmd.append('--jobs=%d' % self.jobs)
-
-    if full:
-      cmd.append('--full_suite')
-    else:
-      cmd.append('--basic_suite')
-
-    if self.type != 'vm':
-      cmd.append('--novm')
-    try:
-      cros_build_lib.RunCommand(cmd, cwd=self.crosutils_root)
-    except cros_build_lib.RunCommandError:
-      logging.error('We failed to generate all the update payloads required '
-                    'for testing. Please see the logs for more info. We print '
-                    'out the log from a failing call to '
-                    'cros_generate_update_payload for error handling.')
-      sys.exit(1)
-
-  def RunAUTestHarness(self, only_verify, quick_update, suite):
-    """Runs the auto update test harness.
-
-    The auto update test harness encapsulates testing the auto-update mechanism
-    for the latest image against the latest official image from the channel.
-    This also tests images with suite:smoke (built-in as part of its
-    verification process).
+    This tests images with suite:smoke (built-in as part of its verification
+    process).
 
     Args:
       only_verify: Only verify the target image.
-      quick_update: Do a quick update test.
       suite: The suite of tests to run.
 
     Raises:
@@ -160,8 +128,6 @@ class CTest(object):
 
     if only_verify:
       cmd.append('--test_prefix=SimpleTestVerify')
-    elif quick_update:
-      cmd.append('--test_prefix=SimpleTestUpdateAndVerify')
 
     if self.test_results_root:
       cmd.append('--test_results_root=%s' % self.test_results_root)
@@ -195,10 +161,6 @@ def main():
                       help='Disable graphics for the vm test.')
   parser.add_argument('--only_verify', action='store_true', default=False,
                       help='Only run basic verification suite.')
-  parser.add_argument('--quick_update', action='store_true',
-                      help='Run a quick update test. This will run a subset of '
-                      'test suite after running autoupdate from target '
-                      'image to itself.')
   parser.add_argument('--remote', default='0.0.0.0',
                       help='For real tests, ip address of the target machine.')
   parser.add_argument('--target_image', default=None,
@@ -219,19 +181,14 @@ def main():
                       'image as the root user')
   parser.add_argument('--ssh_port', default=None, type=int,
                       help='ssh port used to ssh into image. (Should only be'
-                      ' used with either --quick_update or --only_verify)')
+                      ' used with --only_verify)')
 
   opts = parser.parse_args()
 
   if not opts.board:
     parser.error('Need board for image to compare against.')
-  if opts.only_verify and opts.quick_update:
-    parser.error(
-        'Only one of --only_verify or --quick_update should be specified.')
-  if opts.ssh_port and not (opts.only_verify or opts.quick_update):
-    parser.error(
-        'ssh_port should be specified with either --only_verify or '
-        '--quick_update')
+  if opts.ssh_port and not opts.only_verify:
+    parser.error('ssh_port should be specified with either --only_verify')
 
   # force absolute path for these opts, since a chdir occurs deeper in the
   # codebase.
@@ -245,11 +202,8 @@ def main():
 
   ctest = CTest(opts)
   ctest.FindTargetAndBaseImages()
-  if not opts.only_verify:
-    ctest.GenerateUpdatePayloads(not opts.quick_update)
   try:
-    ctest.RunAUTestHarness(opts.only_verify, opts.quick_update,
-                           opts.suite)
+    ctest.RunTestHarness(opts.only_verify, opts.suite)
   except TestException as e:
     if opts.verbose:
       cros_build_lib.Die(str(e))
