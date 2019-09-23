@@ -109,9 +109,6 @@ def CheckOpts(parser, opts):
     opts: Parsed opts.
   """
 
-  if not opts.type in ['vm', 'gce']:
-    parser.error('Failed to specify valid test type.')
-
   def _IsValidImage(image):
     """Asserts that |image_path| is a valid image file for |opts.type|."""
     return (image is not None) and os.path.isfile(image)
@@ -179,7 +176,7 @@ def main():
   parser.add_argument('--test_prefix', default='test',
                       help='Only runs tests with specific prefix i.e. '
                       'testFullUpdateWipeStateful.')
-  parser.add_argument('-p', '--type', default='vm',
+  parser.add_argument('-p', '--type', default='vm', choices=('vm', 'gce'),
                       help='type of test to run: [vm, gce]. Default: vm.')
   parser.add_argument('--verbose', default=True, action='store_true',
                       help='Print out rather than capture output as much as '
@@ -213,11 +210,13 @@ def main():
       raise
 
   with sudo.SudoKeepAlive():
-    if (opts.type == 'vm' or opts.type == 'gce') and opts.parallel:
+    if opts.parallel:
       _RunTestsInParallel(opts)
     else:
-      cros_build_lib.Die('Test harness failed. unsupported test type %s' %
-                         opts.type)
+      test_suite = _PrepareTestSuite(opts)
+      test_result = unittest.TextTestRunner().run(test_suite)
+      if not test_result.wasSuccessful():
+        cros_build_lib.Die('Test harness failed.')
 
 
 if __name__ == '__main__':
