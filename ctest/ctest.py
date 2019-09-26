@@ -21,7 +21,6 @@ sys.path.append(constants.CROS_PLATFORM_ROOT)
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
 
-from crostestutils.lib import image_extractor
 from crostestutils.lib import test_helper
 
 
@@ -61,24 +60,6 @@ class CTest(object):
     # An optional ssh private key used for testing.
     self.ssh_private_key = opts.ssh_private_key
     self.ssh_port = opts.ssh_port
-
-  def FindTargetAndBaseImages(self):
-    """Initializes the target and base images for CTest."""
-    if not self.target:
-      # Grab the latest image we've built.
-      board_images = os.path.join(constants.SOURCE_ROOT, 'src/build/images',
-                                  self.board)
-      latest = os.path.join(board_images, 'latest')
-      version_dir = os.readlink(latest)
-      latest_image_dir = os.path.join(board_images, version_dir)
-
-      self.target = os.path.join(
-          latest_image_dir, image_extractor.ImageExtractor.IMAGE_TO_EXTRACT)
-
-    if not self.base:
-      logging.info('Could not find a latest image to use. '
-                   'Using target instead.')
-      self.base = self.target
 
   def RunTestHarness(self, only_verify, suite):
     """Runs the test harness (suite:smoke).
@@ -160,23 +141,10 @@ def main():
 
   opts = parser.parse_args()
 
-  if not opts.board:
-    parser.error('Need board for image to compare against.')
   if opts.ssh_port and not opts.only_verify:
     parser.error('ssh_port should be specified with either --only_verify')
 
-  # force absolute path for these opts, since a chdir occurs deeper in the
-  # codebase.
-  for x in ('target_image', 'test_results_root'):
-    if x == 'target_image' and opts.type == 'gce':
-      # In this case |target_image| is a Google Storage path.
-      continue
-    val = getattr(opts, x)
-    if val is not None:
-      setattr(opts, x, os.path.abspath(val))
-
   ctest = CTest(opts)
-  ctest.FindTargetAndBaseImages()
   try:
     ctest.RunTestHarness(opts.only_verify, opts.suite)
   except TestException as e:

@@ -34,7 +34,6 @@ from chromite.lib import sudo
 from chromite.lib import timeout_util
 
 from crostestutils.au_test_harness import au_test
-
 from crostestutils.lib import test_helper
 
 
@@ -145,22 +144,32 @@ def CheckOpts(parser, opts):
     opts.test_results_root = tempfile.mkdtemp(
         prefix='au_test_harness', dir=chroot_tmp)
 
+  # Force absolute path for target_image, since a chdir occurs deeper in the
+  # codebase.
+  if opts.type != 'gce':
+    # In this case target_image is a not a Google Storage path.
+    opts.target_image = os.path.abspath(opts.target_image)
+
+  if not opts.base_image:
+    logging.info('Did not pass the base image to use. Using target instead.')
+    opts.base_image = opts.target_image
+
 
 def main():
   test_helper.SetupCommonLoggingFormat()
   parser = argparse.ArgumentParser()
   parser.add_argument('--base_image',
                       help='path to the base image.')
-  parser.add_argument('--board',
+  parser.add_argument('--board', required=True,
                       help='board for the images.')
   parser.add_argument('--no_graphics', action='store_true',
                       help='Disable graphics for the vm test.')
   parser.add_argument('-j', '--jobs',
                       default=test_helper.CalculateDefaultJobs(), type=int,
                       help='Number of simultaneous jobs')
-  parser.add_argument('--target_image',
+  parser.add_argument('--target_image', required=True,
                       help='path to the target image.')
-  parser.add_argument('--test_results_root', default=None,
+  parser.add_argument('--test_results_root', type='path', default=None,
                       help='Root directory to store test results.  Should '
                       'be defined relative to chroot root.')
   parser.add_argument('--test_prefix', default='test',
@@ -180,7 +189,7 @@ def main():
                       action='store_true',
                       help='Run multiple test stages in parallel (applies only '
                       'to vm tests). Default: False')
-  parser.add_argument('--ssh_private_key', default=None,
+  parser.add_argument('--ssh_private_key', type='path', default=None,
                       help='Path to the private key to use to ssh into the '
                       'image as the root user.')
   parser.add_argument('--ssh_port', default=None, type=int,
