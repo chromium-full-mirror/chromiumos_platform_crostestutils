@@ -33,7 +33,6 @@ class Options(object):
     self.board = 'lakitu'
     self.delta = False
     self.verbose = False
-    self.quick_test = False
     self.verify_suite_name = 'gce-smoke'
 
 

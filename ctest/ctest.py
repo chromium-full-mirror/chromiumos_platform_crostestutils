@@ -35,11 +35,8 @@ class CTest(object):
   Variables:
     base: Base image to test from.
     board: the board for the latest image.
-    archive_dir: Location where images for past versions are archived.
     crosutils_root: Location of crosutils.
-    jobs: Numbers of threads to run in parallel.
     no_graphics: boolean: If True, disable graphics during vm test.
-    remote: ip address for real test harness run.
     target: Target image to test.
     test_results_root: Root directory to store au_test_harness results.
     type: which test harness to run.  Possible values: real, vm, gce.
@@ -54,15 +51,12 @@ class CTest(object):
     """
     self.base = None
     self.board = opts.board
-    self.archive_dir = opts.archive_dir
     self.crosutils_root = os.path.join(constants.SOURCE_ROOT, 'src', 'scripts')
     self.no_graphics = opts.no_graphics
-    self.remote = opts.remote
     self.target = opts.target_image
     self.test_results_root = opts.test_results_root
     self.type = opts.type
     self.whitelist_chrome_crashes = opts.whitelist_chrome_crashes
-    self.jobs = opts.jobs
 
     # An optional ssh private key used for testing.
     self.ssh_private_key = opts.ssh_private_key
@@ -80,14 +74,6 @@ class CTest(object):
 
       self.target = os.path.join(
           latest_image_dir, image_extractor.ImageExtractor.IMAGE_TO_EXTRACT)
-
-    # Grab the latest official build for this board to use as the base image.
-    if self.archive_dir:
-      target_version = os.path.realpath(self.target).rsplit('/', 2)[-2]
-      extractor = image_extractor.ImageExtractor(self.archive_dir)
-      latest_image_dir = extractor.GetLatestImage(target_version)
-      if latest_image_dir:
-        self.base = extractor.UnzipImage(latest_image_dir)
 
     if not self.base:
       logging.info('Could not find a latest image to use. '
@@ -113,9 +99,7 @@ class CTest(object):
            '--target_image=%s' % self.target,
            '--board=%s' % self.board,
            '--type=%s' % self.type,
-           '--remote=%s' % self.remote,
            '--verbose',
-           '--jobs=%d' % self.jobs,
           ]
 
     if self.ssh_private_key is not None:
@@ -150,19 +134,10 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-b', '--board',
                       help='board for the image to compare against.')
-  parser.add_argument('--archive_dir',
-                      help='Directory containing previously archived images.')
-  parser.add_argument('--cache', default=False, action='store_true',
-                      help='Cache payloads')
-  parser.add_argument('--jobs', default=test_helper.CalculateDefaultJobs(),
-                      type=int,
-                      help='Number of threads to run in parallel.')
   parser.add_argument('--no_graphics', action='store_true', default=False,
                       help='Disable graphics for the vm test.')
   parser.add_argument('--only_verify', action='store_true', default=False,
                       help='Only run basic verification suite.')
-  parser.add_argument('--remote', default='0.0.0.0',
-                      help='For real tests, ip address of the target machine.')
   parser.add_argument('--target_image', default=None,
                       help='Target image to test.')
   parser.add_argument('--suite', default=None, help='Test suite to run.')

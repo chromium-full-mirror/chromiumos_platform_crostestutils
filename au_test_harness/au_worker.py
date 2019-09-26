@@ -30,10 +30,7 @@ class AUWorker(object):
     self.use_delta_updates = options.delta
     self.verbose = options.verbose
     self.vm_image_path = None
-    if options.quick_test:
-      self.verify_suite = 'build_RootFilesystemSize'
-    else:
-      self.verify_suite = 'suite:%s' % (options.verify_suite_name or 'smoke')
+    self.verify_suite = 'suite:%s' % (options.verify_suite_name or 'smoke')
     self.ssh_private_key = options.ssh_private_key
 
     # Attributes to be initialized in Initialize.

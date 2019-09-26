@@ -25,7 +25,7 @@ from chromite.lib import cros_build_lib
 class CrosAuTestHarnessTest(unittest.TestCase):
   """Testing the GCE related funcionalities in cros_au_test_harness.py"""
 
-  INVALID_TYPE_ERROR = 'error: argument -p/--type: invalid choice'
+  INVALID_TYPE_ERROR = 'error: argument --type: invalid choice'
   INVALID_IMAGE_PATH = 'Testing requires a valid target image.'
 
   def testCheckOptionsDisallowsUndefinedType(self):

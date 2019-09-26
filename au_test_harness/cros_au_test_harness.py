@@ -37,9 +37,6 @@ from crostestutils.au_test_harness import au_test
 
 from crostestutils.lib import test_helper
 
-# File location for update cache in given folder.
-CACHE_FILE = 'update.cache'
-
 
 class _LessBacktracingTestResult(unittest._TextTestResult):
   """TestResult class that suppresses stacks for AssertionError."""
@@ -152,23 +149,16 @@ def CheckOpts(parser, opts):
 def main():
   test_helper.SetupCommonLoggingFormat()
   parser = argparse.ArgumentParser()
-  parser.add_argument('-b', '--base_image',
+  parser.add_argument('--base_image',
                       help='path to the base image.')
-  parser.add_argument('-r', '--board',
+  parser.add_argument('--board',
                       help='board for the images.')
-  parser.add_argument('--no_delta', action='store_false', default=True,
-                      dest='delta',
-                      help='Disable using delta updates.')
   parser.add_argument('--no_graphics', action='store_true',
                       help='Disable graphics for the vm test.')
   parser.add_argument('-j', '--jobs',
                       default=test_helper.CalculateDefaultJobs(), type=int,
                       help='Number of simultaneous jobs')
-  parser.add_argument('-q', '--quick_test', default=False, action='store_true',
-                      help='Use a basic test to verify image.')
-  parser.add_argument('-m', '--remote',
-                      help='Remote address for real test.')
-  parser.add_argument('-t', '--target_image',
+  parser.add_argument('--target_image',
                       help='path to the target image.')
   parser.add_argument('--test_results_root', default=None,
                       help='Root directory to store test results.  Should '
@@ -176,7 +166,7 @@ def main():
   parser.add_argument('--test_prefix', default='test',
                       help='Only runs tests with specific prefix i.e. '
                       'testFullUpdateWipeStateful.')
-  parser.add_argument('-p', '--type', default='vm', choices=('vm', 'gce'),
+  parser.add_argument('--type', default='vm', choices=('vm', 'gce'),
                       help='type of test to run: [vm, gce]. Default: vm.')
   parser.add_argument('--verbose', default=True, action='store_true',
                       help='Print out rather than capture output as much as '

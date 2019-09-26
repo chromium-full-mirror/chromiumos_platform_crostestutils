@@ -51,7 +51,6 @@ class CTestTest(mox.MoxTestBase):
     ctester = ctest.CTest(None) # Calls mocked out __init__.
     ctester.target = 'some_image/target_version/file.bin'
     ctester.base = None
-    ctester.archive_dir = self.ARCHIVE_DIR
     ctester.FindTargetAndBaseImages()
     self.mox.VerifyAll()
     self.assertEqual(ctester.base, ctester.target)
@@ -82,7 +81,6 @@ class CTestTest(mox.MoxTestBase):
     ctester = ctest.CTest(None) # Calls mocked out __init__.
     ctester.target = 'some_image/target_version/file.bin'
     ctester.base = None
-    ctester.archive_dir = self.ARCHIVE_DIR
     ctester.FindTargetAndBaseImages()
     self.mox.VerifyAll()
     self.assertEqual(ctester.base, latest_base_path)
@@ -115,7 +113,6 @@ class CTestTest(mox.MoxTestBase):
     ctester = ctest.CTest(None) # Calls mocked out __init__.
     ctester.target = None
     ctester.base = None
-    ctester.archive_dir = self.ARCHIVE_DIR
     ctester.board = 'board'
     ctester.crosutils_root = fake_crosutils
     ctester.FindTargetAndBaseImages()
