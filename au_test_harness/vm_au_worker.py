@@ -114,12 +114,14 @@ class VMAUWorker(au_worker.AUWorker):
         cwd=chromite_constants.CHROMITE_BIN_DIR, error_code_ok=True,
         capture_output=not self.verbose)
     # If the command failed or printed warnings, print the output.
-    # TODO(pwang): result.output should contain the output of the command even
+    # TODO(pwang): result.stdout should contain the output of the command even
     # though verbose is set to print to stdout.
-    if result.output is None:
-      result.output = ''
-    if result.returncode != 0 or '@@@STEP_WARNINGS@@@' in result.output:
-      print(result.output)
+    if result.stdout is None:
+      out = ''
+    else:
+      out = result.stdout
+    if result.returncode != 0 or '@@@STEP_WARNINGS@@@' in out:
+      print(out)
       self._HandleFail(log_directory, fail_directory)
 
     return result.returncode == 0
