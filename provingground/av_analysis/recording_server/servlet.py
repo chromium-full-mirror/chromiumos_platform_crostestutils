@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, abort
 import google.cloud
 from google.cloud import storage
 
@@ -10,6 +10,28 @@ app = Flask(__name__)
 
 def record(filename, duration):
     """Record screen to |filename| and return error message if ffmpeg fails."""
+    video_device = '/dev/video0'
+
+    # Check if the video device exists.
+    cmd = 'ls {0}'.format(video_device)
+    proc = None
+    try:
+        proc = subprocess.check_output(cmd.split())
+    except subprocess.CalledProcessError:
+        abort(500, 'Seems like the video device was not found.')
+
+    # Check if the video device is already in use and kill if so.
+    cmd = 'lsof -t {0}'.format(video_device)
+    proc = None
+    try:
+        proc = subprocess.check_output(cmd.split())
+    except subprocess.CalledProcessError:
+        abort(500, 'No process must\'ve been found. That\'s okay.')
+    if proc is not None:
+        kill_cmd = 'kill -9 {0}'.format(proc)
+        proc = subprocess.call(kill_cmd.split())
+
+    # Reset some modules for safety:
     # TODO(vsuley): This is hacky: fix the underlying problem.
     # crbug.com/970936
     r1 = subprocess.call(['modprobe', '-vr', 'uvcvideo'])
@@ -66,6 +88,13 @@ def outcome(status, filename):
     return jsonify(status)
 
 
+@app.errorhandler(500)
+def log_and_abort(message):
+    """Logs the error message and also return message"""
+    app.logger.error(message)
+    return message
+
+
 @app.route('/record_and_upload', methods=['POST'])
 def record_and_upload():
     """
@@ -77,8 +106,11 @@ def record_and_upload():
     @returns: JSON containing error status.
 
     """
+    app.logger.info('Args receieved: ' + str(request.args))
     filename = request.args.get('filename')
     duration = request.args.get('duration')
+    post_data = str(request.data.decode('utf-8'))
+    app.logger.info('The form data is: ' + str(post_data))
     status = {}
 
     if not filename or not duration:
@@ -86,11 +118,11 @@ def record_and_upload():
         return jsonify(status), 400
 
     app.logger.info('Starting recording')
-    status['error'] = record(filename, duration)
+    rec_error = record(filename, duration)
 
     # Short circuit if ffmpeg failed.
-    if status.get('error'):
-        return outcome(status, filename)
+    if rec_error is not None:
+        abort(500, rec_error)
 
     app.logger.info('Starting upload')
     status['error'] = upload(filename)

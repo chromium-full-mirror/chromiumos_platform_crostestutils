@@ -1,0 +1,32 @@
+{
+	"active":[
+        "chromeos15-row14a-rack5-host2"
+	],
+
+	"all":[
+		"chromeos15-row14a-rack4-host1",
+        "chromeos15-row14a-rack4-host2",
+        "chromeos15-row14a-rack4-host3",
+        "chromeos15-row14a-rack4-host4",
+        "chromeos15-row14a-rack4-host5",
+        "chromeos15-row14a-rack4-host6",
+        "chromeos15-row14a-rack4-host7",
+        "chromeos15-row14a-rack4-host8",
+        "chromeos15-row14a-rack5-host1",
+        "chromeos15-row14a-rack5-host2",
+        "chromeos15-row14a-rack5-host3",
+        "chromeos15-row14a-rack5-host4",
+        "chromeos15-row14a-rack5-host5",
+        "chromeos15-row14a-rack5-host6",
+        "chromeos15-row14a-rack5-host7",
+        "chromeos15-row14a-rack5-host8",
+        "chromeos15-row14b-rack5-host1",
+        "chromeos15-row14b-rack5-host2",
+        "chromeos15-row14b-rack5-host3",
+        "chromeos15-row14b-rack5-host4",
+        "chromeos15-row14b-rack5-host5",
+        "chromeos15-row14b-rack5-host6",
+        "chromeos15-row14b-rack5-host7",
+        "chromeos15-row14b-rack5-host8"
+    ]
+}
