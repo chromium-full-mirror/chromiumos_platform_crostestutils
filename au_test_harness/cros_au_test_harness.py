@@ -150,6 +150,8 @@ def CheckOpts(parser, opts):
     # In this case target_image is a not a Google Storage path.
     opts.target_image = os.path.abspath(opts.target_image)
 
+  opts.test_results_root = os.path.abspath(opts.test_results_root)
+
   if not opts.base_image:
     logging.info('Did not pass the base image to use. Using target instead.')
     opts.base_image = opts.target_image
@@ -169,7 +171,7 @@ def main():
                       help='Number of simultaneous jobs')
   parser.add_argument('--target_image', required=True,
                       help='path to the target image.')
-  parser.add_argument('--test_results_root', type='path', default=None,
+  parser.add_argument('--test_results_root', default=None,
                       help='Root directory to store test results.  Should '
                       'be defined relative to chroot root.')
   parser.add_argument('--test_prefix', default='test',
@@ -189,7 +191,7 @@ def main():
                       action='store_true',
                       help='Run multiple test stages in parallel (applies only '
                       'to vm tests). Default: False')
-  parser.add_argument('--ssh_private_key', type='path', default=None,
+  parser.add_argument('--ssh_private_key', default=None,
                       help='Path to the private key to use to ssh into the '
                       'image as the root user.')
   parser.add_argument('--ssh_port', default=None, type=int,
