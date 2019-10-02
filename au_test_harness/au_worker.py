@@ -27,7 +27,6 @@ class AUWorker(object):
     self.test_results_root = test_results_root
     self.all_results_root = os.path.join(test_results_root, 'all')
     self.fail_results_root = os.path.join(test_results_root, 'failed')
-    self.use_delta_updates = options.delta
     self.verbose = options.verbose
     self.vm_image_path = None
     self.verify_suite = 'suite:%s' % (options.verify_suite_name or 'smoke')
