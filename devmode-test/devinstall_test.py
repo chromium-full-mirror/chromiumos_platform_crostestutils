@@ -143,9 +143,13 @@ class DevModeTest(object):
            '"/usr/bin/dev_install --yes --binhost=%s"' % self.binhost])
 
       logging.info('Verifying that all python versions work on the image.')
-      for prog in ('python', 'python2', 'python3'):
-        self.device.RunCommand(['sudo', '-u', 'chronos', '--', prog,
-                                '-c', '"print(\'hello world\')"'])
+      # Symlinks can be tricky, and running python from one place might work
+      # while it fails from another.  Test all the prefixes (and $PATH).
+      for prefix in ('/usr/bin', '/usr/local/bin', '/usr/local/usr/bin', ''):
+        for prog in ('python', 'python2', 'python3'):
+          self.device.RunCommand(['sudo', '-u', 'chronos', '--',
+                                  os.path.join(prefix, prog),
+                                  '-c', '"print(\'hello world\')"'])
     except (cros_build_lib.RunCommandError,
             remote_access.SSHConnectionError) as e:
       self.devserver.PrintLog()
