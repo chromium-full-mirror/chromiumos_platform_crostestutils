@@ -6,11 +6,11 @@
 # This script requires that you run build_packages first.
 
 # Special because this can only run inside the chroot.
-if [ ! -r /usr/lib/crosutils/common.sh ]; then
+if [ ! -r /mnt/host/source/src/scripts/common.sh ]; then
   echo "Must run within chroot" >&2
   exit 1
 fi
-. /usr/lib/crosutils/common.sh
+. /mnt/host/source/src/scripts/common.sh
 
 
 # Flags
