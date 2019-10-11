@@ -131,13 +131,18 @@ func main() {
 	w.Flush()
 
 	log.Print("Gathering and displaying key telemetry for labstations.")
-	// TODO(kmshelton): Do this without keeping two approximately-identical memos.
+	containsElement := func(array []string, element string) bool {
+		for _, x := range array {
+			if x == element {
+				return true
+			}
+		}
+		return false
+	}
 	labstations := []string{}
-	labstationsSeen := make(map[string]bool)
 	for _, dut := range duts {
-		if _, ok := labstationsSeen[dut.Labstation]; !ok && dut.Labstation != "" {
+		if !containsElement(labstations, dut.Labstation) && dut.Labstation != "" {
 			labstations = append(labstations, dut.Labstation)
-			labstationsSeen[dut.Labstation] = true
 		}
 	}
 
