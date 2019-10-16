@@ -35,11 +35,6 @@ class AUTest(unittest.TestCase):
     self._old_sigint = None
     self._old_sigterm = None
 
-    # Verify that the signals modules is actually usable, and won't segfault
-    # upon invocation of getsignal. See signals.SignalModuleUsable for the
-    # details and upstream python bug.
-    self._use_signals = signals.SignalModuleUsable()
-
   @classmethod
   def ProcessOptions(cls, options):
     """Processes options for the test suite and sets up the worker class.
@@ -73,8 +68,7 @@ class AUTest(unittest.TestCase):
     # and the caller decides to terminate it (by sending a SIGTERM). The default
     # action of SIGTERM is terminate, which leaves expensive resources leaked
     # and/or local environment tainted.
-    if self._use_signals:
-      self._InstallHandlers()
+    self._InstallHandlers()
     self.worker = self.worker_class(self.options, AUTest.test_results_root)
     self.download_folder = os.path.join(os.path.realpath(os.path.curdir),
                                         'latest_download')
@@ -83,8 +77,7 @@ class AUTest(unittest.TestCase):
     """Overrides unittest.TestCase.tearDown and called after every test."""
     self.worker.CleanUp()
     # Restore signal handlers.
-    if self._use_signals:
-      self._RestoreHandlers()
+    self._RestoreHandlers()
 
   def SimpleTestVerify(self):
     """Test that only verifies the target image.
