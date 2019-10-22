@@ -10,9 +10,19 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 )
+
+// daysSinceRecentCommit specifies how far to look back when determining
+// who recently committed changes to a test.
+const daysSinceRecentCommit = 60
+
+// gitLogAuthorEmailRegexp captures an author's email address from git log.
+var gitLogAuthorEmailRegexp = regexp.MustCompile(`Author:[^<]+<([^>]+)>`)
 
 // e2eTest contains metadata for a single end-to-end tests.
 // End-to-end tests are typically found as directories within
@@ -22,8 +32,14 @@ type e2eTest struct {
 	Owners, RecentEditors        []string
 }
 
+// e2eTest.println displays the test struct's field names and values.
 func (t e2eTest) println() {
 	fmt.Printf("%+v\n", t)
+}
+
+// e2eTest.dir returns the test's folder within autotest/server/site_tests/
+func (t e2eTest) dir() string {
+	return filepath.Join(siteTestsDir, t.Name)
 }
 
 const (
@@ -70,9 +86,9 @@ func init() {
 	}
 }
 
-// Determine whether server/site_tests/$(testName)/*.py contains a certain string.
-func testContains(testName, searchString string) bool {
-	testDir := filepath.Join(siteTestsDir, testName)
+// t.containsStr determines whether server/site_tests/$(t.Name)/*.py contains a certain string.
+func (t e2eTest) containsStr(searchString string) bool {
+	testDir := filepath.Join(siteTestsDir, t.Name)
 	testDirContents, err := ioutil.ReadDir(testDir)
 	if err != nil {
 		log.Fatal(err, " when reading test directory ", testDir)
@@ -93,6 +109,42 @@ func testContains(testName, searchString string) bool {
 	return false
 }
 
+// contains determines whether an array of strings contains a given string.
+func contains(arr []string, elem string) bool {
+	for _, x := range arr {
+		if x == elem {
+			return true
+		}
+	}
+	return false
+}
+
+// t.setRecentEditors finds all authors who have committed changes to the test
+// within the past $(daysSinceRecentCommit) days.
+func (t *e2eTest) setRecentEditors() {
+	sinceDate := time.Now().AddDate(0, 0, -1*daysSinceRecentCommit)
+	gitLogCmd := exec.Command(
+		"git",
+		"--no-pager",
+		"log",
+		"--since",
+		sinceDate.Format(time.RFC3339), ".")
+	gitLogCmd.Dir = t.dir()
+	gitLogOutput, err := gitLogCmd.Output()
+	if err != nil {
+		log.Fatal(err, " when running ", gitLogCmd)
+	}
+	authorMatches := gitLogAuthorEmailRegexp.FindAllSubmatch(gitLogOutput, -1)
+	authors := make([]string, len(authorMatches))
+	for _, authorMatch := range authorMatches {
+		author := strings.TrimSpace(string(authorMatch[1]))
+		if !contains(authors, author) {
+			authors = append(authors, author)
+		}
+	}
+	t.RecentEditors = authors
+}
+
 // Collect and report info on all firmware end-to-end tests.
 func main() {
 	siteTestFileObjs, err := ioutil.ReadDir(siteTestsDir)
@@ -108,7 +160,7 @@ func main() {
 		}
 		t = e2eTest{Name: fo.Name()}
 		for _, testClass := range []string{e2eTestClassFirmware, e2eTestClassCr50} {
-			if testContains(t.Name, testClass) {
+			if t.containsStr(testClass) {
 				t.TestClass = testClass
 				break
 			}
@@ -118,7 +170,7 @@ func main() {
 		}
 		// TODO: Add description
 		// TODO: Add owners
-		// TODO: Add recent editors
+		t.setRecentEditors()
 		e2eTests = append(e2eTests, t)
 	}
 
