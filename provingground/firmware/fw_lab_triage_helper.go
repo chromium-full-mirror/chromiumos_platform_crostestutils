@@ -38,6 +38,8 @@ mostly obviated by monitoring and alerting.
 // This is the TCP Port number on which an ssh server listens (in the test image).
 const sshServerPortNumber = 22
 
+const autotestBranchesGerritAPIEndpoint = "https://chromium-review.googlesource.com/a/projects/chromiumos%2Fthird_party%2Fautotest/branches/"
+
 type dut struct {
 	Hostname, Port, Labstation, Board, Model, Status, LockStatus, LockReason string
 }
@@ -99,6 +101,20 @@ func sendSSHCommand(host string, remoteCmd string, config *ssh.ClientConfig) (ou
 }
 
 func main() {
+	// TODO(kmshelton): Check that gob-curl exists in the user's environment.
+	// "gob-curl" is used instead of net/http due to the complexities of authenticating.
+	branches := [2]string{"master", "prod"}
+	for _, branch := range branches {
+		gerritCmd := exec.Command("gob-curl", autotestBranchesGerritAPIEndpoint+branch)
+		gerritCmdOut, err := gerritCmd.Output()
+		if err != nil {
+			log.Fatalf("gob-curl encountered: %s", err)
+		}
+		fmt.Println(string(gerritCmdOut))
+	}
+	// TODO(kmshelton): Lookup the timestamp associated with the last commits from
+	// the master and prod branches and then calculate the delta.
+
 	duts := []dut{}
 
 	poolPtr := flag.String("pool", "faft-cr50", "A pool of DUTs to operate on.")
