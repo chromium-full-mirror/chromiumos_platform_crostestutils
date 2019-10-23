@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -23,6 +24,9 @@ const daysSinceRecentCommit = 60
 
 // gitLogAuthorEmailRegexp captures an author's email address from git log.
 var gitLogAuthorEmailRegexp = regexp.MustCompile(`Author:[^<]+<([^>]+)>`)
+
+// controlFileOwnersRegexp captures the AUTHOR line from a test control file.
+var controlFileOwnersRegexp = regexp.MustCompile(`AUTHOR = "([^"]+)"`)
 
 // e2eTest contains metadata for a single end-to-end tests.
 // End-to-end tests are typically found as directories within
@@ -86,12 +90,12 @@ func init() {
 	}
 }
 
-// t.containsStr determines whether server/site_tests/$(t.Name)/*.py contains a certain string.
-func (t e2eTest) containsStr(searchString string) bool {
+// e2eTest.containsStr determines whether server/site_tests/$(t.Name)/*.py contains searchString.
+func (t e2eTest) containsStr(searchString string) (bool, error) {
 	testDir := filepath.Join(siteTestsDir, t.Name)
 	testDirContents, err := ioutil.ReadDir(testDir)
 	if err != nil {
-		log.Fatal(err, " when reading test directory ", testDir)
+		return false, fmt.Errorf("%v when reading test directory %s", err, testDir)
 	}
 	for _, fo := range testDirContents {
 		testFile := filepath.Join(testDir, fo.Name())
@@ -100,13 +104,13 @@ func (t e2eTest) containsStr(searchString string) bool {
 		}
 		testFileContents, err := ioutil.ReadFile(testFile)
 		if err != nil {
-			log.Fatal(err, " when reading test file ", testFile)
+			return false, fmt.Errorf("%v when reading test file %s", err, testFile)
 		}
 		if strings.Contains(string(testFileContents), searchString) {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // contains determines whether an array of strings contains a given string.
@@ -119,9 +123,9 @@ func contains(arr []string, elem string) bool {
 	return false
 }
 
-// t.setRecentEditors finds all authors who have committed changes to the test
+// e2e.setRecentEditors finds all authors who have committed changes to the test
 // within the past $(daysSinceRecentCommit) days.
-func (t *e2eTest) setRecentEditors() {
+func (t *e2eTest) setRecentEditors() error {
 	sinceDate := time.Now().AddDate(0, 0, -1*daysSinceRecentCommit)
 	gitLogCmd := exec.Command(
 		"git",
@@ -132,10 +136,10 @@ func (t *e2eTest) setRecentEditors() {
 	gitLogCmd.Dir = t.dir()
 	gitLogOutput, err := gitLogCmd.Output()
 	if err != nil {
-		log.Fatal(err, " when running ", gitLogCmd)
+		return fmt.Errorf("%v when running %s", err, gitLogCmd)
 	}
 	authorMatches := gitLogAuthorEmailRegexp.FindAllSubmatch(gitLogOutput, -1)
-	authors := make([]string, len(authorMatches))
+	authors := []string{}
 	for _, authorMatch := range authorMatches {
 		author := strings.TrimSpace(string(authorMatch[1]))
 		if !contains(authors, author) {
@@ -143,6 +147,40 @@ func (t *e2eTest) setRecentEditors() {
 		}
 	}
 	t.RecentEditors = authors
+	return nil
+}
+
+// e2eTest.setOwners populates e2eTest.Owners based on the AUTHORS line of the control file
+func (t *e2eTest) setOwners() error {
+	controlFile := t.findOneControlFile()
+	controlFileBytes, err := ioutil.ReadFile(controlFile)
+	if err != nil {
+		return fmt.Errorf("%v when reading control file %s", err, controlFile)
+	}
+	ownerMatch := controlFileOwnersRegexp.FindStringSubmatch(string(controlFileBytes))
+	for _, owner := range strings.Split(ownerMatch[1], ",") {
+		t.Owners = append(t.Owners, strings.TrimSpace(owner))
+	}
+	return nil
+}
+
+// e2eTest.findOneControlFile returns the path to the alphabetically first control file for t.
+func (t e2eTest) findOneControlFile() string {
+	controlFiles := t.findAllControlFiles()
+	return controlFiles[0]
+}
+
+// e2eTest.findAllControlFiles returns a slice of filepaths to the control files for t.
+func (t e2eTest) findAllControlFiles() []string {
+	controlFiles := []string{}
+	fileObjs, _ := ioutil.ReadDir(t.dir())
+	for _, fo := range fileObjs {
+		if strings.HasPrefix(fo.Name(), "control") {
+			controlFiles = append(controlFiles, filepath.Join(t.dir(), fo.Name()))
+		}
+	}
+	sort.Strings(controlFiles)
+	return controlFiles
 }
 
 // Collect and report info on all firmware end-to-end tests.
@@ -160,7 +198,11 @@ func main() {
 		}
 		t = e2eTest{Name: fo.Name()}
 		for _, testClass := range []string{e2eTestClassFirmware, e2eTestClassCr50} {
-			if t.containsStr(testClass) {
+			hasClass, err := t.containsStr(testClass)
+			if err != nil {
+				log.Fatalf("%v for test %s", err, t.Name)
+			}
+			if hasClass {
 				t.TestClass = testClass
 				break
 			}
@@ -169,8 +211,12 @@ func main() {
 			continue
 		}
 		// TODO: Add description
-		// TODO: Add owners
-		t.setRecentEditors()
+		for _, f := range []func() error{t.setRecentEditors, t.setOwners} {
+			err := f()
+			if err != nil {
+				log.Fatalf("%v for test %s", err, t.Name)
+			}
+		}
 		e2eTests = append(e2eTests, t)
 	}
 
