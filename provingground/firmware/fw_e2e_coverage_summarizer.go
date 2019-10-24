@@ -25,15 +25,41 @@ const daysSinceRecentCommit = 60
 // gitLogAuthorEmailRegexp captures an author's email address from git log.
 var gitLogAuthorEmailRegexp = regexp.MustCompile(`Author:[^<]+<([^>]+)>`)
 
-// controlFileOwnersRegexp captures the AUTHOR line from a test control file.
-var controlFileOwnersRegexp = regexp.MustCompile(`AUTHOR = "([^"]+)"`)
+// controlFileAuthorRegexp captures the AUTHOR line from a test control file.
+var controlFileAuthorRegexp = regexp.MustCompile(`AUTHOR = "+([^"]+)"`)
+
+// controlFilePurposeRegexp captures the PURPOSE line from a test control file.
+var controlFilePurposeRegexp = regexp.MustCompile(`PURPOSE = "+([^"]+)"`)
+
+// e2eTestClassFirmware and e2eTestClassCr50 contain the names of Autotest classes
+// which indicate that a site_test is a firmware test.
+const (
+	e2eTestClassFirmware = "FirmwareTest"
+	e2eTestClassCr50     = "Cr50Test"
+)
+
+// autotestDir is a filepath to the root directory of autotest.
+var autotestDir string
+
+// siteTestsDir is a filepath to autotestDir/server/site_tests/
+var siteTestsDir string
+
+// contains determines whether an array of strings contains a given string.
+func contains(arr []string, elem string) bool {
+	for _, x := range arr {
+		if x == elem {
+			return true
+		}
+	}
+	return false
+}
 
 // e2eTest contains metadata for a single end-to-end tests.
 // End-to-end tests are typically found as directories within
 // autotest/server/site_tests
 type e2eTest struct {
-	Name, TestClass, Description string
-	Owners, RecentEditors        []string
+	Name, TestClass, Purpose string
+	Authors, RecentEditors   []string
 }
 
 // e2eTest.println displays the test struct's field names and values.
@@ -44,50 +70,6 @@ func (t e2eTest) println() {
 // e2eTest.dir returns the test's folder within autotest/server/site_tests/
 func (t e2eTest) dir() string {
 	return filepath.Join(siteTestsDir, t.Name)
-}
-
-const (
-	e2eTestClassFirmware = "FirmwareTest"
-	e2eTestClassCr50     = "Cr50Test"
-)
-
-var autotestDir string
-var siteTestsDir string
-
-// getDefaultAutotestDir attempts to find Autotest if the -autotest_dir flag is
-// not provided.
-func getDefaultAutotestDir() string {
-	defaultAutotestDir := "/"
-	thisDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err, " when getting current working directory")
-	}
-	thisDir, err = filepath.Abs(thisDir)
-	if err != nil {
-		log.Fatal(err, " when parsing cwd as an absolute path")
-	}
-	thisDir = filepath.ToSlash(thisDir)
-	for _, dir := range strings.Split(thisDir, "/") {
-		defaultAutotestDir = filepath.Join(defaultAutotestDir, dir)
-		if dir == "src" {
-			break
-		}
-	}
-	defaultAutotestDir = filepath.Join(defaultAutotestDir, "third_party", "autotest", "files")
-	return defaultAutotestDir
-}
-
-// Init parses command-line args to find autotest and site_tests
-func init() {
-	flag.StringVar(&autotestDir, "autotest_dir", getDefaultAutotestDir(), "The path to your autotest files")
-	flag.Parse()
-	if _, err := os.Stat(autotestDir); os.IsNotExist(err) {
-		log.Fatalf("Could not find autotest directory: <%s>. Try supplying -autotest_dir", autotestDir)
-	}
-	siteTestsDir = filepath.Join(autotestDir, "server", "site_tests")
-	if _, err := os.Stat(siteTestsDir); os.IsNotExist(err) {
-		log.Fatalf("Could not find site_tests directory: <%s>", siteTestsDir)
-	}
 }
 
 // e2eTest.containsStr determines whether server/site_tests/$(t.Name)/*.py contains searchString.
@@ -113,10 +95,20 @@ func (t e2eTest) containsStr(searchString string) (bool, error) {
 	return false, nil
 }
 
-// contains determines whether an array of strings contains a given string.
-func contains(arr []string, elem string) bool {
-	for _, x := range arr {
-		if x == elem {
+// e2eTest.setClass searches the test's .py files for any strings that indicate
+// that the test is a firmware class. If any matches are found, then t.TestClass
+// is set to the matching string, and the function returns true (indicating that
+// the test is a firmware test).
+// Otherwise, the function returns false (indicating that the test is not a
+// firmware test).
+func (t *e2eTest) setClass() bool {
+	for _, testClass := range [2]string{e2eTestClassFirmware, e2eTestClassCr50} {
+		hasClass, err := t.containsStr(testClass)
+		if err != nil {
+			log.Fatalf("%v for test %s", err, t.Name)
+		}
+		if hasClass {
+			t.TestClass = testClass
 			return true
 		}
 	}
@@ -150,17 +142,51 @@ func (t *e2eTest) setRecentEditors() error {
 	return nil
 }
 
-// e2eTest.setOwners populates e2eTest.Owners based on the AUTHORS line of the control file
-func (t *e2eTest) setOwners() error {
-	controlFile := t.findOneControlFile()
-	controlFileBytes, err := ioutil.ReadFile(controlFile)
+// captureGroupFromFileContents runs a Regexp on the contents of a file,
+// and returns the first capture group (or "" if no match is found).
+func captureGroupFromFileContents(fp string, re *regexp.Regexp) (string, error) {
+	fileBytes, err := ioutil.ReadFile(fp)
 	if err != nil {
-		return fmt.Errorf("%v when reading control file %s", err, controlFile)
+		return "", fmt.Errorf("%v when reading file %s", err, fp)
 	}
-	ownerMatch := controlFileOwnersRegexp.FindStringSubmatch(string(controlFileBytes))
-	for _, owner := range strings.Split(ownerMatch[1], ",") {
-		t.Owners = append(t.Owners, strings.TrimSpace(owner))
+	match := re.FindStringSubmatch(string(fileBytes))
+	if match != nil {
+		return strings.TrimSpace(match[1]), nil
 	}
+	return "", nil
+}
+
+// e2eTest.setAuthors populates e2eTest.Authors based on the AUTHORS line of the control file
+func (t *e2eTest) setAuthors() error {
+	controlFile := t.findOneControlFile()
+	authors, err := captureGroupFromFileContents(controlFile, controlFileAuthorRegexp)
+	if err != nil {
+		return fmt.Errorf("%v when setting Authors", err)
+	}
+	for _, author := range strings.Split(authors, ",") {
+		t.Authors = append(t.Authors, strings.TrimSpace(author))
+	}
+	return nil
+}
+
+// e2eTest.setPurpose populates e2eTest.Purpose based on the PURPOSE line of the control file.
+// If there is a file named "control", then its PURPOSE is assumed to be the source-of-truth.
+// Otherwise, all unique PURPOSEs from control-files are concatenated and semicolon-deliminated.
+func (t *e2eTest) setPurpose() error {
+	allPurposes := []string{}
+	for _, controlFile := range t.findAllControlFiles() {
+		purpose, err := captureGroupFromFileContents(controlFile, controlFilePurposeRegexp)
+		if err != nil {
+			return fmt.Errorf("%v when setting Purpose", err)
+		}
+		if !contains(allPurposes, purpose) {
+			allPurposes = append(allPurposes, purpose)
+		}
+		if filepath.Base(controlFile) == "control" {
+			break
+		}
+	}
+	t.Purpose = strings.Join(allPurposes, "; ")
 	return nil
 }
 
@@ -183,6 +209,42 @@ func (t e2eTest) findAllControlFiles() []string {
 	return controlFiles
 }
 
+// getDefaultAutotestDir attempts to find Autotest if the -autotest_dir flag is
+// not provided.
+func getDefaultAutotestDir() string {
+	defaultAutotestDir := "/"
+	thisDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err, " when getting current working directory")
+	}
+	thisDir, err = filepath.Abs(thisDir)
+	if err != nil {
+		log.Fatal(err, " when parsing cwd as an absolute path")
+	}
+	thisDir = filepath.ToSlash(thisDir)
+	for _, dir := range strings.Split(thisDir, "/") {
+		defaultAutotestDir = filepath.Join(defaultAutotestDir, dir)
+		if dir == "src" {
+			break
+		}
+	}
+	defaultAutotestDir = filepath.Join(defaultAutotestDir, "third_party", "autotest", "files")
+	return defaultAutotestDir
+}
+
+// Init parses command-line args to find autotest and site_tests.
+func init() {
+	flag.StringVar(&autotestDir, "autotest_dir", getDefaultAutotestDir(), "The path to your autotest files")
+	flag.Parse()
+	if _, err := os.Stat(autotestDir); os.IsNotExist(err) {
+		log.Fatalf("Could not find autotest directory: <%s>. Try supplying -autotest_dir", autotestDir)
+	}
+	siteTestsDir = filepath.Join(autotestDir, "server", "site_tests")
+	if _, err := os.Stat(siteTestsDir); os.IsNotExist(err) {
+		log.Fatalf("Could not find site_tests directory: <%s>", siteTestsDir)
+	}
+}
+
 // Collect and report info on all firmware end-to-end tests.
 func main() {
 	siteTestFileObjs, err := ioutil.ReadDir(siteTestsDir)
@@ -197,21 +259,10 @@ func main() {
 			continue
 		}
 		t = e2eTest{Name: fo.Name()}
-		for _, testClass := range []string{e2eTestClassFirmware, e2eTestClassCr50} {
-			hasClass, err := t.containsStr(testClass)
-			if err != nil {
-				log.Fatalf("%v for test %s", err, t.Name)
-			}
-			if hasClass {
-				t.TestClass = testClass
-				break
-			}
-		}
-		if t.TestClass == "" {
+		if !t.setClass() {
 			continue
 		}
-		// TODO: Add description
-		for _, f := range []func() error{t.setRecentEditors, t.setOwners} {
+		for _, f := range []func() error{t.setRecentEditors, t.setAuthors, t.setPurpose} {
 			err := f()
 			if err != nil {
 				log.Fatalf("%v for test %s", err, t.Name)
