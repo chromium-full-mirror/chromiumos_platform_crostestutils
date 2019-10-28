@@ -7,7 +7,6 @@
 
 set -e
 
-SHILL_START_LOCK_PATH="/run/lock/shill-start.lock"
 WIFI_CRED=/usr/local/etc/wifi_cred
 
 # See do_suspend() in src/third_party/autotest/files/client/cros/power/sys_power.py
@@ -209,14 +208,6 @@ rescan_usb_hubs() {
 }
 
 restart_connection_manager() {
-  # NB: -e will fail on a dangling symlink. That's deliberate. The
-  # symlink should point at /proc/<locker's PID>. And if that path is
-  # gone, the locker has exited, and the lock is stale.
-  if [ -e "${SHILL_START_LOCK_PATH}" ]; then
-    lock_holder=$(readlink "${SHILL_START_LOCK_PATH}")
-    info_msg "Ignoring restart request; lock held by ${lock_holder}"
-    return
-  fi
   initctl stop shill || info_msg "Shill was not running."
   initctl start shill
 }
