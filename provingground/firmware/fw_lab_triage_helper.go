@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"golang.org/x/crypto/ssh"
@@ -17,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"time"
 )
 
 const labstationTelemetryCmds = "grep guado_labstation-release /etc/lsb-release; " +
@@ -38,10 +40,44 @@ mostly obviated by monitoring and alerting.
 // This is the TCP Port number on which an ssh server listens (in the test image).
 const sshServerPortNumber = 22
 
-const autotestBranchesGerritAPIEndpoint = "https://chromium-review.googlesource.com/a/projects/chromiumos%2Fthird_party%2Fautotest/branches/"
+const autotestGetBranchesGerritAPIEndpoint = "https://chromium-review.googlesource.com/a/projects/chromiumos%2Fthird_party%2Fautotest/branches/"
+const autotestGetCommitGerritAPIEndpoint = "https://chromium-review.googlesource.com/a/projects/chromiumos%2Fthird_party%2Fautotest/commits/"
+
+type branch struct {
+	name                string
+	lastCommit          string
+	lastCommitTimestamp time.Time
+}
 
 type dut struct {
 	Hostname, Port, Labstation, Board, Model, Status, LockStatus, LockReason string
+}
+
+func sanitizeGobCurlOutput(output *[]byte) {
+	// Responses from gob-curl currently begin with ")]}'".  Stripping that out
+	// makes the response marshalable.
+	if string((*output)[:4]) == ")]}'" {
+		*output = (*output)[4:]
+	} else {
+		log.Println("Sanitizing gob-curl output may no longer be necessary.")
+	}
+}
+
+func queryGerrit(endpoint string, resource string) map[string]*json.RawMessage {
+	// TODO(kmshelton): Check that gob-curl exists in the user's environment.
+	// "gob-curl" is used instead of net/http due to the complexities of authenticating.
+	gerritCmd := exec.Command("gob-curl", endpoint+resource)
+	gerritCmdOut, err := gerritCmd.Output()
+	if err != nil {
+		log.Fatalf("gob-curl encountered: %s", err)
+	}
+	sanitizeGobCurlOutput(&gerritCmdOut)
+	var gerritResponse map[string]*json.RawMessage
+	err = json.Unmarshal(gerritCmdOut, &gerritResponse)
+	if err != nil {
+		log.Fatalf("json.Unmarshal encountered: %s", err)
+	}
+	return gerritResponse
 }
 
 func newDut(hostname string) dut {
@@ -101,19 +137,33 @@ func sendSSHCommand(host string, remoteCmd string, config *ssh.ClientConfig) (ou
 }
 
 func main() {
-	// TODO(kmshelton): Check that gob-curl exists in the user's environment.
-	// "gob-curl" is used instead of net/http due to the complexities of authenticating.
-	branches := [2]string{"master", "prod"}
+	master := branch{name: "master"}
+	prod := branch{name: "prod"}
+	branches := [2]*branch{&master, &prod}
 	for _, branch := range branches {
-		gerritCmd := exec.Command("gob-curl", autotestBranchesGerritAPIEndpoint+branch)
-		gerritCmdOut, err := gerritCmd.Output()
+		gerritBranchResponse := queryGerrit(autotestGetBranchesGerritAPIEndpoint, branch.name)
+		lastCommitWithQuotes := string(*gerritBranchResponse["revision"])
+		branch.lastCommit = lastCommitWithQuotes[1 : len(lastCommitWithQuotes)-1]
+
+		gerritCommitResponse := queryGerrit(autotestGetCommitGerritAPIEndpoint, branch.lastCommit)
+		var gerritCommitter map[string]interface{}
+		err := json.Unmarshal(*gerritCommitResponse["committer"], &gerritCommitter)
 		if err != nil {
-			log.Fatalf("gob-curl encountered: %s", err)
+			log.Fatalf("json.Unmarshal encountered: %s", err)
 		}
-		fmt.Println(string(gerritCmdOut))
+		branch.lastCommitTimestamp, err = time.Parse("2006-01-02 15:04:05.000000000",
+			fmt.Sprintf("%v", (gerritCommitter["date"])))
+		if err != nil {
+			log.Fatalf("time.Parse encountered: %s", err)
+		}
+
+		fmt.Printf("The last %s commit is from %s.\n",
+			branch.name,
+			branch.lastCommitTimestamp.Format("Jan 2 at 15:04"))
 	}
-	// TODO(kmshelton): Lookup the timestamp associated with the last commits from
-	// the master and prod branches and then calculate the delta.
+
+	h := time.Now().Sub(branches[1].lastCommitTimestamp).Hours()
+	fmt.Printf("The prod version of autotest is about %.0f hours old.\n\n", h)
 
 	duts := []dut{}
 
