@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -13,7 +13,6 @@
 
 """Download and output or run cros flash command to copy image to usb."""
 
-from __future__ import print_function
 import argparse
 from multiprocessing import Manager
 from multiprocessing import Process
@@ -132,7 +131,7 @@ def main():
   try:
     subprocess.check_output(['which', 'gsutil'])
   except subprocess.CalledProcessError:
-    print ('Error finding gsutil!  Please make sure it is installed.')
+    print('Error finding gsutil!  Please make sure it is installed.')
     return
 
   # Find src/ dir.
@@ -179,7 +178,7 @@ def main():
   # Deal with board name(s).
   dupe_boards = []
   boards = arguments.board
-  for i in xrange(len(boards)):
+  for i in range(len(boards)):
     boards[i] = boards[i].lower().replace('_', '-')
     if boards[i] in PLATFORM_CONVERT:
       boards[i] = PLATFORM_CONVERT[boards[i]]
@@ -387,7 +386,7 @@ def main():
       from_list = [boards[0]] * len(to_list)
       destination_str = '%s'
 
-    for i in xrange(len(from_list)):
+    for i in range(len(from_list)):
       board = from_list[i]
       if not dl_error[board]:
         destination = destination_str % to_list[i]
