@@ -1,6 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
-from __future__ import unicode_literals
 import json
 import os
 import sys
@@ -66,7 +65,7 @@ def ping_recorders(host):
     rec_name = host + _recorder + _cros
     rec_ping_args = ['ping', '-c', '1', rec_name]
     response = subprocess.call(rec_ping_args, stdout=_FNULL)
-    print "REC: {0:50} Ping Result: {1}".format(rec_name, response)
+    print("REC: {0:50} Ping Result: {1}".format(rec_name, response))
 
 
 def update_servlet(host):
