@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -20,8 +20,6 @@ Format assumptions:
   - variable definitions are in the format VAR_NAME="DEF" or 'DEF'
   - variable usage is ${VAR_NAME}
 """
-
-from __future__ import print_function
 
 import os
 import re
@@ -275,7 +273,8 @@ def firmware_versions():
   find_output = ''
   cmd = r'find %s -regex .*touch-firmware-.*-[0-9.]+\.ebuild'
   for d in ['private-overlays/', 'overlays/']:
-    find_output += subprocess.check_output((cmd % d).split(' '))
+    find_output += subprocess.check_output((cmd % d).split(' '),
+            universal_newlines=True)
   ebuilds = find_output.split()
   ebuilds.sort()
   for path in ebuilds:
@@ -285,7 +284,8 @@ def firmware_versions():
   find_output = ''
   cmd = 'find %s -regex .*model.dtsi'
   for d in ['private-overlays/', 'overlays/']:
-    find_output += subprocess.check_output((cmd % d).split(' '))
+    find_output += subprocess.check_output((cmd % d).split(' '),
+            universal_newlines=True)
   dtsis = find_output.split()
   for path in dtsis:
     values_list += find_model_firmwares_in_file(path)
