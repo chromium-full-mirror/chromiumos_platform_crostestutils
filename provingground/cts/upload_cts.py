@@ -6,7 +6,6 @@
 
 """This script can be used to upload CTS results to CTS and APFE buckets."""
 
-from __future__ import print_function
 from lib.upload_utils import UploadUtils
 from xml.dom import minidom
 

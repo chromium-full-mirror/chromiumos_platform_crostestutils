@@ -6,7 +6,6 @@
 
 """This script uploads CTS Verifier results to CTS and APFE gs:// buckets."""
 
-from __future__ import print_function
 from lib.upload_utils import UploadUtils
 from xml.dom import minidom
 
