@@ -13,8 +13,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -30,11 +28,11 @@ const labstationTelemetryCmds = "grep guado_labstation-release /etc/lsb-release;
 	"pgrep --list-full update_engine; " +
 	"printf \"\n\";"
 
-const warningMessage = `This utility assumes many things, like that you have atest in the environment
-in which it is run and that you have cros in your DNS search path.  This is just
-a convenience utility for firmware qual test environment health triage.  Feel
-free and encouraged to extend and enhance it, but in the long term, it should be
-mostly obviated by monitoring and alerting.
+const warningMessage = `This utility assumes many things, like that you have the skylab utility in the
+environment in which it is run and that you have cros in your DNS search path.
+This is a convenience utility for firmware qual test environment health triage.
+Feel free and encouraged to extend and enhance it: it should generally
+complement monitoring and alerting efforts and any other longer term efforts.
 `
 
 // This is the TCP Port number on which an ssh server listens (in the test image).
@@ -50,7 +48,7 @@ type branch struct {
 }
 
 type dut struct {
-	Hostname, Port, Labstation, Board, Model, Status, LockStatus, LockReason string
+	Hostname, Port, Labstation, Board, Model string
 }
 
 func sanitizeGobCurlOutput(output *[]byte) {
@@ -83,29 +81,38 @@ func queryGerrit(endpoint string, resource string) map[string]*json.RawMessage {
 func newDut(hostname string) dut {
 	d := dut{Hostname: hostname}
 
-	regexMap := map[string]string{
-		"Port":       `servo_port : (?P<Port>.*)`,
-		"Labstation": `servo_host : (?P<Labstation>.*)`,
-		"Board":      `board:(?P<Board>.*)`,
-		"Model":      `model:(?P<Model>.*)`,
-		"Status":     `Status: (?P<Status>.*)`,
-		"LockStatus": `Locked: (?P<LockStatus>.*)`,
-		"LockReason": `Lock Reason: (?P<LockReason>.*)`,
+	cmd := exec.Command("skylab", "dut-info", "-json", hostname)
+	cmdOut, _ := cmd.Output()
+
+	type skylabResponse struct {
+		Common struct {
+			Attributes []struct {
+				Key   string `json:"key"`
+				Value string `json:"value"`
+			} `json:"attributes"`
+			Labels struct {
+				Board string `json:"board"`
+				Model string `json:"model"`
+			} `json:"labels"`
+		} `json:"common"`
+	}
+	var s skylabResponse
+	err := json.Unmarshal(cmdOut, &s)
+	if err != nil {
+		log.Fatalf("json.Unmarshal encountered: %s", err)
 	}
 
-	cmd := exec.Command("atest", "host", "stat", hostname)
-	out, _ := cmd.Output()
-
-	for field, re := range regexMap {
-		match := regexp.MustCompile(re).FindStringSubmatch(string(out))
-		// The LockReason field can be empty if the DUT is not locked.
-		if len(match) != 2 && field != "LockReason" {
-			log.Printf("Skipping %s on %s.  This could be ok if a DUT is only partially through the deployment checklist.", field, hostname)
-			continue
-		} else {
-			reflect.ValueOf(&d).Elem().FieldByName(field).SetString(match[1])
+	for _, attribute := range s.Common.Attributes {
+		if attribute.Key == "servo_port" {
+			d.Port = attribute.Value
+		}
+		if attribute.Key == "servo_host" {
+			d.Labstation = attribute.Value
 		}
 	}
+
+	d.Board = s.Common.Labels.Board
+	d.Model = s.Common.Labels.Model
 
 	return d
 }
@@ -172,15 +179,16 @@ func main() {
 
 	fmt.Println(warningMessage)
 
-	log.Print("Gathering DUT info via atest...")
+	log.Print("Gathering DUT info via the skylab utility...")
 
-	cmd := exec.Command("atest", "host", "list", "--hostnames-only", "--label=pool:"+*poolPtr)
+	cmd := exec.Command("skylab", "dut-list", "-pool", *poolPtr)
 	out, err := cmd.Output()
 	if err != nil {
-		log.Fatalf("<atest host list> encountered: %s", err)
+		log.Fatalf("<skylab dut-list> encountered: %s", err)
 	}
 
-	// Removing hostnames that don't begin with "chromeos1-" removes those that are not in the firmware lab.
+	// Only operating on hostnames that begin with "chromeos1-" ensures DUTs that are not in the firmware lab
+	// are not operated on.
 	for _, hostname := range strings.Fields(string(out)) {
 		if strings.HasPrefix(hostname, "chromeos1-") {
 			duts = append(duts, newDut(hostname))
@@ -189,10 +197,10 @@ func main() {
 
 	log.Print("Summarizing DUT info...")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "Hostname\tBoard\tModel\tStatus\tLabstation\tPort\tLockStatus\tLockReason")
+	fmt.Fprintln(w, "Hostname\tBoard\tModel\tLabstation\tPort")
 	for _, dut := range duts {
-		fmt.Fprintln(w, dut.Hostname+"\t"+dut.Board+"\t"+dut.Model+"\t"+dut.Status+"\t"+dut.Labstation+"\t"+
-			dut.Port+"\t"+dut.LockStatus+"\t"+dut.LockReason+"\t")
+		fmt.Fprintln(w, dut.Hostname+"\t"+dut.Board+"\t"+dut.Model+"\t"+dut.Labstation+"\t"+
+			dut.Port+"\t")
 	}
 	w.Flush()
 
