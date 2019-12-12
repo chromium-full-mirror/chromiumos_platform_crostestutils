@@ -80,10 +80,9 @@ class DevModeTest(object):
         self.device.Cleanup()
       self.device = None
       if self.port:
-        cros_build_lib.RunCommand(['./cros_vm', '--stop',
-                                   '--ssh-port=%d' % self.port],
-                                  cwd=chromite_constants.CHROMITE_BIN_DIR,
-                                  error_code_ok=True)
+        cros_build_lib.run(['./cros_vm', '--stop', '--ssh-port=%d' % self.port],
+                           cwd=chromite_constants.CHROMITE_BIN_DIR,
+                           check=False)
       self.port = None
       osutils.RmDir(self.tmpdir, ignore_missing=True)
       self.tmpdir = None
@@ -117,7 +116,7 @@ class DevModeTest(object):
     logging.info('Starting the vm on port %d.', self.port)
     vm_cmd = ['./cros_vm', '--ssh-port=%d' % self.port,
               '--image-path=%s' % self.working_image_path, '--start']
-    cros_build_lib.RunCommand(vm_cmd, cwd=chromite_constants.CHROMITE_BIN_DIR)
+    cros_build_lib.run(vm_cmd, cwd=chromite_constants.CHROMITE_BIN_DIR)
 
     self.device = remote_access.ChromiumOSDevice(
         remote_access.LOCALHOST, port=self.port, base_dir=self.tmpdir)
@@ -138,7 +137,7 @@ class DevModeTest(object):
     """Tests that we can run dev-install and have python work afterwards."""
     try:
       logging.info('Running dev install in the vm.')
-      self.device.RunCommand(
+      self.device.run(
           ['bash', '-l', '-c',
            '"/usr/bin/dev_install --yes --binhost=%s"' % self.binhost])
 
@@ -147,9 +146,9 @@ class DevModeTest(object):
       # while it fails from another.  Test all the prefixes (and $PATH).
       for prefix in ('/usr/bin', '/usr/local/bin', '/usr/local/usr/bin', ''):
         for prog in ('python', 'python2', 'python3'):
-          self.device.RunCommand(['sudo', '-u', 'chronos', '--',
-                                  os.path.join(prefix, prog),
-                                  '-c', '"print(\'hello world\')"'])
+          self.device.run(['sudo', '-u', 'chronos', '--',
+                           os.path.join(prefix, prog),
+                           '-c', '"print(\'hello world\')"'])
     except (cros_build_lib.RunCommandError,
             remote_access.SSHConnectionError) as e:
       self.devserver.PrintLog()

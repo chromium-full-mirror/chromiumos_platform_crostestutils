@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import os
 import shutil
+import subprocess
 import tempfile
 
 from chromite.cbuildbot import constants as buildbot_constants
@@ -32,10 +33,10 @@ class VMAUWorker(au_worker.AUWorker):
 
   def _StopVM(self):
     """Stops an existing VM."""
-    cros_build_lib.RunCommand(['./cros_vm', '--stop',
-                               '--ssh-port=%s' % self._ssh_port],
-                              print_cmd=False, error_code_ok=True,
-                              cwd=chromite_constants.CHROMITE_BIN_DIR)
+    cros_build_lib.run(['./cros_vm', '--stop',
+                        '--ssh-port=%s' % self._ssh_port],
+                       print_cmd=False, check=False,
+                       cwd=chromite_constants.CHROMITE_BIN_DIR)
 
   def CleanUp(self):
     """Stop the vm after a test."""
@@ -109,10 +110,10 @@ class VMAUWorker(au_worker.AUWorker):
 
     self.TestInfo('Running %s suite to verify image.' % test)
 
-    result = cros_build_lib.RunCommand(
-        command, print_cmd=self.verbose, combine_stdout_stderr=True,
-        cwd=chromite_constants.CHROMITE_BIN_DIR, error_code_ok=True,
-        capture_output=not self.verbose)
+    result = cros_build_lib.run(
+        command, print_cmd=self.verbose, stderr=subprocess.STDOUT,
+        cwd=chromite_constants.CHROMITE_BIN_DIR, check=False,
+        capture_output=not self.verbose, encoding='utf-8')
     # If the command failed or printed warnings, print the output.
     # TODO(pwang): result.stdout should contain the output of the command even
     # though verbose is set to print to stdout.

@@ -98,20 +98,20 @@ class GceAuWorkerTest(cros_test_lib.MockTempDirTestCase):
     """Helper function that checks correct test is run by VerifyImage."""
 
     def _MockRunCommand(cmd, *_args, **_kwargs):
-      """A mock cros_build_lib.RunCommand that verifies passed-in arguments."""
+      """A mock cros_build_lib.run that verifies passed-in arguments."""
       self.assertIn('test_that', cmd)
       self.assertIn(expected_test_ran, cmd)
       return cros_build_lib.CommandResult()
 
     self.PatchObject(path_util, 'ToChrootPath', autospec=True)
-    self.PatchObject(cros_build_lib, 'RunCommand', side_effect=_MockRunCommand,
+    self.PatchObject(cros_build_lib, 'run', side_effect=_MockRunCommand,
                      autospec=True)
     self.PatchObject(AUWorker, 'ParseGeneratedTestOutput', autospec=True,
                      return_value=100)
 
     worker.VerifyImage(None, test=passed_in_test)
     # Ensure that the checks in _MockRunCommand did take place.
-    self.assertEqual(1, cros_build_lib.RunCommand.call_count)
+    self.assertEqual(1, cros_build_lib.run.call_count)
 
   def testVerifyImage(self):
     """Verifies that VerifyImage runs the correct test.
@@ -130,7 +130,7 @@ class GceAuWorkerTest(cros_test_lib.MockTempDirTestCase):
     worker = GCEAUWorker(self.options, './log',
                          json_key_file=self.json_key_file)
     self.PatchObject(path_util, 'ToChrootPath', autospec=True)
-    self.PatchObject(cros_build_lib, 'RunCommand', autospec=True)
+    self.PatchObject(cros_build_lib, 'run', autospec=True)
     self.PatchObject(worker, '_HandleFail', autospec=True)
     self.PatchObject(worker, '_GetTestReport', autospec=True,
                      return_value='report')

@@ -19,10 +19,10 @@ from chromite.lib import path_util
 
 def _GetTotalMemoryGB():
   """Calculate total memory on this machine, in gigabytes."""
-  res = cros_build_lib.RunCommand(['free', '-g'], print_cmd=False,
-                                  capture_output=True)
+  res = cros_build_lib.run(['free', '-g'], print_cmd=False, capture_output=True,
+                           encoding='utf-8')
   assert res.returncode == 0
-  for line in res.output.splitlines():
+  for line in res.stdout.splitlines():
     if line.startswith('Mem:'):
       return int(line.split()[1])
   raise Exception('Could not calculate total memory')
@@ -66,7 +66,7 @@ def CreateVMImage(image, board=None, full=True):
     if board:
       cmd.extend(['--board', board])
 
-    cros_build_lib.RunCommand(cmd, enter_chroot=True, cwd=constants.SOURCE_ROOT)
+    cros_build_lib.run(cmd, enter_chroot=True, cwd=constants.SOURCE_ROOT)
 
   assert os.path.exists(vm_image_path), 'Failed to create the VM image.'
   return vm_image_path

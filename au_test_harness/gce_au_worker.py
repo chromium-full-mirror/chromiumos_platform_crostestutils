@@ -166,11 +166,10 @@ class GCEAUWorker(au_worker.AUWorker):
                    path_util.ToChrootPath(self.ssh_private_key))
 
       logging.info('Running test %s to verify image.', test)
-      result = cros_build_lib.RunCommand(cmd, error_code_ok=True,
-                                         enter_chroot=True,
-                                         redirect_stdout=True,
-                                         cwd=constants.CROSUTILS_DIR)
-      percent_passed = self.ParseGeneratedTestOutput(result.output)
+      result = cros_build_lib.run(cmd, check=False, enter_chroot=True,
+                                  encoding='utf-8', stdout=True,
+                                  cwd=constants.CROSUTILS_DIR)
+      percent_passed = self.ParseGeneratedTestOutput(result.stdout)
       passed = percent_passed >= percent_required_to_pass
       if not passed:
         self._HandleFail(log_directory, fail_directory)

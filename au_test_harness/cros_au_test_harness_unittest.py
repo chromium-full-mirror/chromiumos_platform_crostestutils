@@ -35,7 +35,7 @@ class CrosAuTestHarnessTest(unittest.TestCase):
            '--type=aws'
           ]
     with self.assertRaises(cros_build_lib.RunCommandError) as cm:
-      cros_build_lib.RunCommand(cmd)
+      cros_build_lib.run(cmd)
 
     self.assertIn(self.INVALID_TYPE_ERROR, cm.exception.result.error)
 
@@ -48,7 +48,7 @@ class CrosAuTestHarnessTest(unittest.TestCase):
     # We don't have all required flags passed in so still expect an exception,
     # but it won't be complaining about invalid type.
     with self.assertRaises(cros_build_lib.RunCommandError) as cm:
-      cros_build_lib.RunCommand(cmd)
+      cros_build_lib.run(cmd)
 
     self.assertNotIn(self.INVALID_TYPE_ERROR, cm.exception.result.error)
 
