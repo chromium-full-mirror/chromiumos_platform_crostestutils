@@ -69,7 +69,7 @@ if [ ${FLAGS_canary} -eq ${FLAGS_TRUE} ]; then
 fi
 if [ ${FLAGS_labqual} -eq ${FLAGS_TRUE} ]; then
   SUITE_CHECK=$(( SUITE_CHECK + 1 ))
-  TESTS=( suite:bvt-{inline,cq} )
+  TESTS=( suite:bvt-{inline,cq,faft} )
   if [ ${FLAGS_usbkey} -eq ${FLAGS_TRUE} ]; then
     TESTS+=( platform_ServoPowerStateController_USBPluggedin )
   else
