@@ -324,7 +324,7 @@ def main():
         return 1
 
       # Untar/rename files as needed.
-      file_path = os.path.join(folder_path, file_name)
+      file_path = os.path.join(folder_path, file_name.decode('utf-8'))
       if download_type == TEST:
         subprocess.call(['tar', '-xf', file_path, '-C', folder_path])
         os.remove(file_path)
