@@ -63,17 +63,17 @@ type e2eTest struct {
 }
 
 // e2eTest.println displays the test struct's field names and values.
-func (t e2eTest) println() {
-	fmt.Printf("%+v\n", t)
+func (t *e2eTest) println() {
+	fmt.Printf("%+v\n", *t)
 }
 
 // e2eTest.dir returns the test's folder within autotest/server/site_tests/
-func (t e2eTest) dir() string {
+func (t *e2eTest) dir() string {
 	return filepath.Join(siteTestsDir, t.Name)
 }
 
 // e2eTest.containsStr determines whether server/site_tests/$(t.Name)/*.py contains searchString.
-func (t e2eTest) containsStr(searchString string) (bool, error) {
+func (t *e2eTest) containsStr(searchString string) (bool, error) {
 	testDir := filepath.Join(siteTestsDir, t.Name)
 	testDirContents, err := ioutil.ReadDir(testDir)
 	if err != nil {
@@ -142,6 +142,22 @@ func (t *e2eTest) setRecentEditors() error {
 	return nil
 }
 
+// newE2ETest creates a new e2eTest based on its name, and fills in its fields.
+// If the test is not a firmware test, instead return a null pointer with no error.
+func newE2ETest(name string) (*e2eTest, error) {
+	t := &e2eTest{Name: name}
+	if !t.setClass() {
+		return nil, nil
+	}
+	for _, f := range []func() error{t.setRecentEditors, t.setAuthors, t.setPurpose} {
+		err := f()
+		if err != nil {
+			return nil, fmt.Errorf("test %s: %v", t.Name, err)
+		}
+	}
+	return t, nil
+}
+
 // captureGroupFromFileContents runs a Regexp on the contents of a file,
 // and returns the first capture group (or "" if no match is found).
 func captureGroupFromFileContents(fp string, re *regexp.Regexp) (string, error) {
@@ -191,13 +207,13 @@ func (t *e2eTest) setPurpose() error {
 }
 
 // e2eTest.findOneControlFile returns the path to the alphabetically first control file for t.
-func (t e2eTest) findOneControlFile() string {
+func (t *e2eTest) findOneControlFile() string {
 	controlFiles := t.findAllControlFiles()
 	return controlFiles[0]
 }
 
 // e2eTest.findAllControlFiles returns a slice of filepaths to the control files for t.
-func (t e2eTest) findAllControlFiles() []string {
+func (t *e2eTest) findAllControlFiles() []string {
 	controlFiles := []string{}
 	fileObjs, _ := ioutil.ReadDir(t.dir())
 	for _, fo := range fileObjs {
@@ -232,6 +248,27 @@ func getDefaultAutotestDir() string {
 	return defaultAutotestDir
 }
 
+// collectExistingE2ETests finds all e2e tests that are already written in Autotest,
+// and collects information about them.
+func collectExistingE2ETests() ([]*e2eTest, error) {
+	siteTestFileObjs, err := ioutil.ReadDir(siteTestsDir)
+	if err != nil {
+		return nil, fmt.Errorf("reading site_tests dir (%s): %v", siteTestsDir, err)
+	}
+	var e2eTests []*e2eTest
+	for _, fo := range siteTestFileObjs {
+		if !fo.IsDir() {
+			continue
+		}
+		if t, err := newE2ETest(fo.Name()); err != nil {
+			return nil, err
+		} else if t != nil {
+			e2eTests = append(e2eTests, t)
+		}
+	}
+	return e2eTests, nil
+}
+
 // Init parses command-line args to find autotest and site_tests.
 func init() {
 	flag.StringVar(&autotestDir, "autotest_dir", getDefaultAutotestDir(), "The path to your autotest files")
@@ -247,31 +284,11 @@ func init() {
 
 // Collect and report info on all firmware end-to-end tests.
 func main() {
-	siteTestFileObjs, err := ioutil.ReadDir(siteTestsDir)
+	existingTests, err := collectExistingE2ETests()
 	if err != nil {
-		log.Fatal(err, " when reading site_tests dir: ", siteTestsDir)
+		log.Fatal(err)
 	}
-
-	var e2eTests []e2eTest
-	var t e2eTest
-	for _, fo := range siteTestFileObjs {
-		if !fo.IsDir() {
-			continue
-		}
-		t = e2eTest{Name: fo.Name()}
-		if !t.setClass() {
-			continue
-		}
-		for _, f := range []func() error{t.setRecentEditors, t.setAuthors, t.setPurpose} {
-			err := f()
-			if err != nil {
-				log.Fatalf("%v for test %s", err, t.Name)
-			}
-		}
-		e2eTests = append(e2eTests, t)
-	}
-
-	for _, t := range e2eTests {
+	for _, t := range existingTests {
 		t.println()
 	}
 }
