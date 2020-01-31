@@ -291,4 +291,5 @@ func main() {
 	for _, t := range existingTests {
 		t.println()
 	}
+	monorailDemo()
 }
