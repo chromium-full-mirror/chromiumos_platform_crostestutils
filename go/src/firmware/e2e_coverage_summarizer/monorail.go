@@ -53,6 +53,12 @@ const (
 	UpdatedMin        requestParam = "updatedMin"
 )
 
+// UnwrittenFwTestReqParams contains the canonical parameters to query Monorail for unwritten FW tests.
+var UnwrittenFwTestReqParams = map[requestParam]string{
+	Q:     "Component:OS>Firmware Component:Test>ChromeOS", // Space-separated means AND
+	Label: "Test-Missing,Test-Flaky,Test-Escape",           // Comma-separated means OR
+	Can:   "open"}                                          // Canned query filters down to open issues
+
 // User contains all the data about an author/cc/owner returned by the monorail.issues.list API.
 type User struct {
 	Kind          string
@@ -203,21 +209,4 @@ func IssuesList(params map[requestParam]string) ([]Issue, error) {
 		return nil, fmt.Errorf("unmarhsalling API response body: %v", err)
 	}
 	return issuesListResponse.Items, nil
-}
-
-// monorailDemo demonstrates how to get issues matching certain parameters.
-func monorailDemo() {
-	params := map[requestParam]string{
-		Q:     "Component:OS>Firmware Component:Test>ChromeOS", // Space-separated means AND
-		Label: "Test-Missing,Test-Flaky,Test-Escape",           // Comma-separated means OR
-		Can:   "open"}                                          // Canned query filters down to open issues
-	issues, err := IssuesList(params)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, issue := range issues {
-		fmt.Printf("\nIssue %d: %s\nComponents:%s\nLabels:%s\n", issue.ID, issue.Title, issue.Components, issue.Labels)
-	}
-	fmt.Println()
-	log.Print("Total issues: ", len(issues))
 }
