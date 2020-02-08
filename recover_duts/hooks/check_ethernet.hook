@@ -77,7 +77,7 @@ do_ping() {
   local eth
 
   for eth in $(search_devices 1); do
-    ping -q -I "${eth}" -W 1 -c 9 "${ip_addr}" && return 0
+    ping -q -I "${eth}" -W 1 -c 3 "${ip_addr}" && return 0
   done
 
   return 1
