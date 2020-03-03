@@ -7,6 +7,8 @@ package main
 import (
 	"firmware/internal/pkg/dutio"
 	"fmt"
+	"log"
+	"os"
 )
 
 // TODO(kmshelton): Move the dut definition into the dutio package and make SendSSHCommand a method on dut.
@@ -231,7 +233,9 @@ func newDUT(hostname string) dut {
 
 func main() {
 	fmt.Println("This utility is undergoing incremental development.  Please use crostestutils/provingground/firmware/dut.sh for now.")
-	// TODO(kmshelton): Unhardcode the hostname.
-	d := newDUT("chromeos1-row1-rack8-host2.cros.corp.google.com")
+	if len(os.Args) != 2 {
+		log.Panic("Please pass a DUT hostname and only a DUT hostname to this utility.")
+	}
+	d := newDUT(os.Args[1])
 	fmt.Printf("%+v\n", d)
 }
