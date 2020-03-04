@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
 // TODO(kmshelton): Move the dut definition into the dutio package and make SendSSHCommand a method on dut.
@@ -33,6 +34,28 @@ type dut struct {
 	vpd                 string
 }
 
+func (d *dut) printBugTemplate() {
+	fmt.Println("Type of hardware  :", d.model, "{DEVICE STAGE: EVT, DVT, PVT...}")
+	fmt.Println("ChromeOS Version  :", d.crOSVersion)
+	fmt.Println("BIOS Version      :", d.biosVersion)
+	fmt.Println("EC Version        :", d.ecROVersion, "/", d.ecRWVersion)
+	fmt.Println("cr50 Version      :", d.gscVersion, "\n")
+	fmt.Println("CPU arch          :", d.cpuArch)
+	fmt.Println("CPU speed         :", d.cpuSpeed)
+	fmt.Println("Total Memory      :", d.totalMemory)
+	fmt.Println("Memory Type       :", d.memoryType)
+	if d.mmcModel != "" {
+		fmt.Println("MMC Model         :", d.mmcModel)
+		fmt.Println("MMC Firmware      :", d.mmcFirmwareVersion, "\n")
+	} else if d.nvmeModel != "" {
+		fmt.Println("NVMe Model        :", d.nvmeModel)
+		fmt.Println("NVMe Firmware     :", d.nvmeFirmwareVersion, "\n")
+	} else {
+		fmt.Println()
+	}
+	fmt.Print("VPD info:\n", d.vpd, "\n")
+}
+
 // setModel interfaces with a DUT and sets the model field (the DUT's market identifier).
 func (d *dut) setModel() error {
 	// TODO(kmshelton): Here and elsewhere: use dbus instead of executing commands directly
@@ -42,7 +65,7 @@ func (d *dut) setModel() error {
 		return err
 	}
 	// TODO(kmshelton): Add some validation on out (here and elsewhere).
-	d.model = out
+	d.model = strings.TrimSpace(out)
 	return nil
 }
 
@@ -61,7 +84,7 @@ func (d *dut) setCrOSVersion() error {
 	if err != nil {
 		return err
 	}
-	d.crOSVersion = out
+	d.crOSVersion = strings.TrimSpace(out)
 	return nil
 }
 
@@ -71,7 +94,7 @@ func (d *dut) setBIOSVersion() error {
 	if err != nil {
 		return err
 	}
-	d.biosVersion = out
+	d.biosVersion = strings.TrimSpace(out)
 	return nil
 }
 
@@ -82,7 +105,7 @@ func (d *dut) setECROVersion() error {
 	if err != nil {
 		return err
 	}
-	d.ecROVersion = out
+	d.ecROVersion = strings.TrimSpace(out)
 	return nil
 }
 
@@ -93,7 +116,7 @@ func (d *dut) setECRWVersion() error {
 	if err != nil {
 		return err
 	}
-	d.ecRWVersion = out
+	d.ecRWVersion = strings.TrimSpace(out)
 	return nil
 }
 
@@ -103,7 +126,7 @@ func (d *dut) setGSCVersion() error {
 	if err != nil {
 		return err
 	}
-	d.gscVersion = out
+	d.gscVersion = strings.TrimSpace(out)
 	return nil
 }
 
@@ -113,7 +136,7 @@ func (d *dut) setCPUArch() error {
 	if err != nil {
 		return err
 	}
-	d.cpuArch = out
+	d.cpuArch = strings.TrimSpace(out)
 	return nil
 }
 
@@ -123,7 +146,7 @@ func (d *dut) setCPUModel() error {
 	if err != nil {
 		return err
 	}
-	d.cpuModel = out
+	d.cpuModel = strings.TrimSpace(out)
 	return nil
 }
 
@@ -133,7 +156,7 @@ func (d *dut) setCPUSpeed() error {
 	if err != nil {
 		return err
 	}
-	d.cpuSpeed = out
+	d.cpuSpeed = strings.TrimSpace(out)
 	return nil
 }
 
@@ -143,7 +166,7 @@ func (d *dut) setTotalMemory() error {
 	if err != nil {
 		return err
 	}
-	d.totalMemory = out
+	d.totalMemory = strings.TrimSpace(out)
 	return nil
 }
 
@@ -153,58 +176,58 @@ func (d *dut) setMemoryType() error {
 	if err != nil {
 		return err
 	}
-	d.memoryType = out
+	d.memoryType = strings.TrimSpace(out)
 	return nil
 }
 
 // setMMCModel interfaces with a DUT and sets the mmcModel field (the multimedia card market identifier).
 func (d *dut) setMMCModel() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "if [ -e /dev/mmcblk ]; then cat /dev/mmcblk/device/name; else true; fi")
+	out, err := dutio.SendSSHCommand(d.hostname, "MMCBLK=$(ls -d /sys/block/mmcblk? 2>/dev/null); if [ ! -z ${MMCBLK} ]; then cat $MMCBLK/device/name; else true; fi")
 	if err != nil {
 		return err
 	}
-	d.mmcModel = out
+	d.mmcModel = strings.TrimSpace(out)
 	return nil
 }
 
 // setMMCFirmwareVersion interfaces with a DUT and sets the version of the multimedia card's firmware.
 func (d *dut) setMMCFirmwareVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "if [ -e /dev/mmcblk ]; then cat /dev/mmcblk/device/firmware; else true; fi")
+	out, err := dutio.SendSSHCommand(d.hostname, "MMCBLK=$(ls -d /sys/block/mmcblk? 2>/dev/null); if [ ! -z ${MMCBLK} ]; then cat $MMCBLK/device/fwrev; else true; fi")
 	if err != nil {
 		return err
 	}
-	d.mmcFirmwareVersion = out
+	d.mmcFirmwareVersion = strings.TrimSpace(out)
 	return nil
 }
 
 // setNVMEModel interfaces with a DUT and sets the nvmeModel (the market identifier of the non-volatile memory express solid state drive).
 func (d *dut) setNVMEModel() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "if [ -e /dev/nvme0n1 ]; then cat /dev/nvme0n1/device/name; else true; fi")
+	out, err := dutio.SendSSHCommand(d.hostname, "if [ -e /dev/nvme0n1 ]; then smartctl -a /dev/nvme0n1 | grep \"Model Number\" | tr -s ' ' | cut -d ' ' -f 3,4; else true; fi")
 	if err != nil {
 		return err
 	}
-	d.nvmeModel = out
+	d.nvmeModel = strings.TrimSpace(out)
 	return nil
 }
 
 // setNVMEFirmwareVersion interfaces with a DUT and sets the nvmeFirmwareVersion field (the firmware version of the non-volatile
 //  memory express solid state drive).
 func (d *dut) setNVMEFirmwareVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "if [ -e /dev/nvme0n1 ]; then cat /dev/nvme0n1/device/fwrev; else true; fi")
+	out, err := dutio.SendSSHCommand(d.hostname, "if [ -e /dev/nvme0n1 ]; then smartctl -a /dev/nvme0n1 | grep \"Firmware Version\" | tr -s ' ' | cut -d ' ' -f 3; else true; fi")
 	if err != nil {
 		return err
 	}
-	d.nvmeFirmwareVersion = out
+	d.nvmeFirmwareVersion = strings.TrimSpace(out)
 	return nil
 }
 
 // setVPD interfaces with a DUT and sets the vpd field (the "Vital Product Data").
 func (d *dut) setVPD() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "vpd -l")
+	out, err := dutio.SendSSHCommand(d.hostname, "vpd -l | grep -v DO_NOT_SHARE | grep -v -i mac")
 	if err != nil {
 		return err
 	}
-	d.vpd = out
+	d.vpd = strings.TrimSpace(out)
 	return nil
 }
 
@@ -232,10 +255,9 @@ func newDUT(hostname string) dut {
 }
 
 func main() {
-	fmt.Println("This utility is undergoing incremental development.  Please use crostestutils/provingground/firmware/dut.sh for now.")
 	if len(os.Args) != 2 {
 		log.Panic("Please pass a DUT hostname and only a DUT hostname to this utility.")
 	}
 	d := newDUT(os.Args[1])
-	fmt.Printf("%+v\n", d)
+	d.printBugTemplate()
 }
