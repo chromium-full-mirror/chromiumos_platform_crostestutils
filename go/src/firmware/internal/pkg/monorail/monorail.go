@@ -4,7 +4,7 @@
 
 // monorail.go provides an interface to the Monorail API.
 
-package main
+package monorail
 
 import (
 	"context"

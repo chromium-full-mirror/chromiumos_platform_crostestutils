@@ -5,6 +5,7 @@
 package main
 
 import (
+	"firmware/internal/pkg/monorail"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -289,7 +290,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("collecting existing tests: %v", err)
 	}
-	issues, err := IssuesList(UnwrittenFwTestReqParams)
+	issues, err := monorail.IssuesList(monorail.UnwrittenFwTestReqParams)
 	if err != nil {
 		log.Fatalf("collecting unwritten tests: %v", err)
 	}
