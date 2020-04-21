@@ -12,7 +12,6 @@ import shutil
 import subprocess
 import tempfile
 
-from chromite.cbuildbot import constants as buildbot_constants
 from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
@@ -49,7 +48,7 @@ class VMAUWorker(au_worker.AUWorker):
     # well as the archive stage of cbuildbot. Make a private copy of
     # the VM image, to avoid any conflict.
     _, private_image_path = tempfile.mkstemp(
-        prefix='%s.' % buildbot_constants.VM_DISK_PREFIX)
+        prefix='%s.' % chromite_constants.VM_DISK_PREFIX)
     shutil.copy(self.vm_image_path, private_image_path)
     self.TestInfo('Copied shared disk image %s to %s.' %
                   (self.vm_image_path, private_image_path))
