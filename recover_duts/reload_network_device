@@ -31,6 +31,7 @@ logger -t "${SCRIPT_NAME}" "Restarting network interface ${INTERFACE}"
 
 device_path="$(readlink -f "/sys${DEVPATH}/../..")"
 
+module_name=""
 if [ -e "/sys${DEVPATH}/device/driver/module" ]; then
   module_name="$(basename "$(readlink -f "/sys${DEVPATH}/device/driver/module")")"
   rmmod "${module_name}" || error "rmmod '${module_name}' failed ($?)"
@@ -56,6 +57,8 @@ elif [ "${ID_BUS}" = "usb" ] ; then
   echo 0 > "${device_authorize_path}"
   sleep ${POWER_DOWN_TIME_SECONDS}
   echo 1 > "${device_authorize_path}"
+elif [ -n "${module_name}" ]; then
+  modprobe "${module_name}" || error "modprobe '${module_name}' failed ($?)"
 else
-  error "Bus type '${ID_BUS}' is unknown"
+  error "Bus type '${ID_BUS}' is unknown, and no module found"
 fi
