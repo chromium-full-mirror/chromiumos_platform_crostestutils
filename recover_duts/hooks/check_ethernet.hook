@@ -243,17 +243,29 @@ pause_check_ethernet() {
   # "Pause" the ethernet check for up to 30 minutes at the
   # request of any test that creates and flocks PAUSE_FILE.
 
+  local start_time
+  local paused_time
+
+  # Check the modification time before locking, in case we're the first to
+  # create it.
+  start_time=$(stat -c%Z "${PAUSE_FILE}") || true
+  if [ -n "${start_time}" ]; then
+    local now
+    now="$(date +%s)"
+    paused_time=$((now - start_time))
+  fi
+
   # Acquire the lock and hold it until exit, if possible.
   if try_pause_lock; then
+    if [ -n "${paused_time}" -a "${paused_time}" -lt 30 ]; then
+      # We were recently paused. Skip this iteration, in case the Ethernet link
+      # is still coming up.
+      info_msg "Last locked ${paused_time} seconds ago; skipping"
+      return 0
+    fi
     # File wasn't locked - no need to pause.
     return 1
   fi
-
-  local now
-  local start_time
-
-  now="$(date +%s)"
-  start_time=$(stat -c%Z "${PAUSE_FILE}") || true
 
   if [ -z "${start_time}" ]; then
     # Couldn't figure out lock time - just clobber it.
@@ -261,8 +273,6 @@ pause_check_ethernet() {
     return 1
   fi
 
-  local paused_time
-  paused_time=$((now - start_time))
   if [ ${paused_time} -gt $((30*60)) ] ; then
     critical_msg "Pause request exceeded 30 minutes. Checking lab network link."
     force_pause_lock
