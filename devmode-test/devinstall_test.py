@@ -24,6 +24,7 @@ import constants
 sys.path.append(constants.SOURCE_ROOT)
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 
+# pylint: disable=C0413
 from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
@@ -115,6 +116,7 @@ class DevModeTest(object):
     self.port = remote_access.GetUnusedPort()
     logging.info('Starting the vm on port %d.', self.port)
     vm_cmd = ['./cros_vm', '--ssh-port=%d' % self.port,
+              '--board=%s' % self.board,
               '--image-path=%s' % self.working_image_path, '--start']
     cros_build_lib.run(vm_cmd, cwd=chromite_constants.CHROMITE_BIN_DIR)
 
