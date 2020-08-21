@@ -71,9 +71,9 @@ if [ ${FLAGS_labqual} -eq ${FLAGS_TRUE} ]; then
   SUITE_CHECK=$(( SUITE_CHECK + 1 ))
   TESTS=( suite:bvt-{inline,cq,faft} )
   if [ ${FLAGS_usbkey} -eq ${FLAGS_TRUE} ]; then
-    TESTS+=( platform_ServoPowerStateController_USBPluggedin )
+    TESTS+=( platform_ServoPowerStateController.USBPluggedin )
   else
-    TESTS+=( platform_ServoPowerStateController_USBUnplugged )
+    TESTS+=( platform_ServoPowerStateController.USBUnplugged )
   fi
 
   # Handle Servo options for the lab qualification tests.
