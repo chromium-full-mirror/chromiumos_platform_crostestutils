@@ -323,4 +323,16 @@ func main() {
 		p := float64(len(existingTests)) / float64((len(issues) + len(existingTests))) * 100
 		log.Printf("Proportion of tests written: %.2f%%", p)
 	}
+	var unowned int
+	broadGroups := []string{
+		"Chrome OS Team",
+		"Intel",
+		"The Chromium OS Authors",
+	}
+	for _, t := range existingTests {
+		if len(t.Authors) == 1 && contains(broadGroups, (t.Authors[0])) {
+			unowned++
+		}
+	}
+	log.Printf("Tests without maintainers:   %d", unowned)
 }
