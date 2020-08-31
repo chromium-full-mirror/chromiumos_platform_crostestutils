@@ -182,8 +182,8 @@ def main():
   parser.add_argument('--verbose', default=True, action='store_true',
                       help='Print out rather than capture output as much as '
                       'possible.')
-  parser.add_argument('--whitelist_chrome_crashes', default=False,
-                      dest='whitelist_chrome_crashes', action='store_true',
+  parser.add_argument('--allow_chrome_crashes', default=False,
+                      dest='allow_chrome_crashes', action='store_true',
                       help='Treat Chrome crashes as non-fatal.')
   parser.add_argument('--verify_suite_name', default=None,
                       help='Specify the verify suite to run.')

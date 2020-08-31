@@ -28,7 +28,7 @@ class VMAUWorker(au_worker.AUWorker):
     self.graphics_flag = '--no-display' if options.no_graphics else ''
     if not self.board:
       cros_build_lib.Die('Need board to convert base image to vm.')
-    self.whitelist_chrome_crashes = options.whitelist_chrome_crashes
+    self.allow_chrome_crashes = options.allow_chrome_crashes
 
   def _StopVM(self):
     """Stops an existing VM."""
@@ -102,8 +102,8 @@ class VMAUWorker(au_worker.AUWorker):
               ]
     if self.graphics_flag:
       command.append(self.graphics_flag)
-    if self.whitelist_chrome_crashes:
-      command.append('--test_that-args=--whitelist-chrome-crashes')
+    if self.allow_chrome_crashes:
+      command.append('--test_that-args=--allow-chrome-crashes')
     if self.ssh_private_key:
       command.append('--private-key=%s' % self.ssh_private_key)
 
