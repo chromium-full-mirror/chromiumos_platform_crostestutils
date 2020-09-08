@@ -1,8 +1,5 @@
-runtime: python27
-api_version: 1
-threadsafe: true
+runtime: python38
 
 handlers:
 - url: /.*
-  script: main.app
-  secure: always
+  script: auto

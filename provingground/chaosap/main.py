@@ -1,6 +1,4 @@
-#!flask/bin/python
-# -*- coding: utf-8 -*-
-# Copyright 2017 Google Inc.
+# Copyright 2020 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ap_spec
-import logging
-import ndb_json
 from flask import Flask, jsonify, abort, request, make_response
-from google.appengine.ext import ndb
+from google.cloud import ndb
+from marshmallow import Schema, fields
 
 app = Flask(__name__)
+client = ndb.Client()
 
-# Chaos AP Device Methods
 
 class ApDevice(ndb.Model):
-    """Models an individual AP object with specs."""
-    hostname = ndb.StringProperty(indexed=True)
+    """ Model class to create AP entities to write to Datastore """
+    hostname = ndb.StringProperty()
     lock_status = ndb.BooleanProperty(indexed=True)
     lock_status_updated = ndb.DateTimeProperty(auto_now=True)
     locked_by = ndb.StringProperty()
@@ -34,9 +30,25 @@ class ApDevice(ndb.Model):
     lab_label = ndb.StringProperty()
     ap_label = ndb.StringProperty()
 
+
+class DataSerializer(Schema):
+
+    class Meta:
+        # The serialized output has all the items defined in fields param
+        fields = (
+            "id", "hostname", "lock_status", "lock_status_updated",
+            "locked_by", "router_name", "lab_label", "ap_label"
+        )
+
+
+ndb_serialize = DataSerializer()
+multi_ndb_serialize = DataSerializer(many=True)
+
+
 @app.route('/')
 def greeting():
-    return 'Welcome to Chaos AP Page.\n'
+    return "Welcome to Chaos AP Page"
+
 
 @app.route('/devices/new', methods=['POST'])
 def post():
@@ -50,24 +62,23 @@ def post():
     @returns string if success, error 400 if fails.
     """
     if not request.json:
-        abort(400)
-    hostname = request.json['hostname']
-    new_device = ApDevice(
-        id = hostname,
-        hostname = hostname,
-        lock_status = False)
-    if 'router_name' in request.json and type(request.json['router_name']) != unicode:
-        make_response(jsonify({'error': 'Router name not unicode.'}), 400)
-    elif 'ap_label' in request.json and type(request.json['ap_label']) != unicode:
-        make_response(jsonify({'error': 'AP label not unicode.'}), 400)
-    elif 'lab_label' in request.json and type(request.json['lab_label']) != unicode:
-        make_response(jsonify({'error': 'Lab label not unicode.'}), 400)
-    else:
+        abort(400, "Not a JSON request")
+    required_keys = ('hostname', 'router_name', 'ap_label', 'lab_label')
+    for _key in required_keys:
+        if _key in request.json and type(request.json[_key]) != str:
+            return make_response(jsonify({'error': f'{_key} value not a str'}))
+
+    with client.context():
+        hostname = request.json['hostname']
+        new_device = ApDevice(
+            id=hostname,
+            hostname=hostname,
+            lock_status=False)
         new_device.router_name = request.json['router_name']
         new_device.ap_label = request.json['ap_label']
         new_device.lab_label = request.json['lab_label']
-    new_device.put()
-    return jsonify(result=True, id=hostname)
+        new_device.put()
+        return jsonify(result=True, id=hostname)
 
 
 @app.route('/devices/<hostname>', methods=['PUT', 'GET'])
@@ -80,24 +91,21 @@ def edit_ap_device(hostname):
     <URL>/devices/<HOSTNAME>
 
     """
-    if request.method == 'GET':
+    with client.context():
         device_key = ndb.Key(ApDevice, hostname)
         device = device_key.get()
-        device_js = ndb_json.dumps(device, indent=0)
-        return device_js
-
-    if request.method == 'PUT':
-        device_key = ndb.Key(ApDevice, hostname)
-        device = device_key.get()
-        if 'router_name' in request.json:
-            device.router_name = request.json['router_name']
-        if 'ap_label' in request.json:
-            device.ap_label = request.json['ap_label']
-        if 'lab_label' in request.json:
-            device.lab_label = request.json['lab_label']
-        device.put()
-        return jsonify(result=True, id=hostname, ap_label=device.ap_label, \
-               lab_label=device.lab_label, router_name=device.router_name)
+        if request.method == 'GET':
+            return jsonify(ndb_serialize.dump(device))
+        if request.method == 'PUT':
+            if 'router_name' in request.json:
+                device.router_name = request.json['router_name']
+            if 'ap_label' in request.json:
+                device.ap_label = request.json['ap_label']
+            if 'lab_label' in request.json:
+                device.lab_label = request.json['lab_label']
+            device.put()
+            return jsonify(result=True, id=hostname, ap_label=device.ap_label,
+                           lab_label=device.lab_label, router_name=device.router_name)
 
 
 @app.route('/devices/lock', methods=['PUT'])
@@ -112,27 +120,31 @@ def lock_devices():
     @returns Hosts locked message if success, error 400 if fails.
     """
     if not request.json:
-        abort(400)
-    if type(request.json['hostname']) is list:
-        hostnames = request.json['hostname']
-        device_keys = [ndb.Key(ApDevice, x) for x in hostnames]
-        devices = ndb.get_multi(device_keys)
-        for d in devices:
-            d.lock_status = True
-        ndb.put_multi(devices)
-        return jsonify(result=True, id=hostnames)
-    elif 'hostname' in request.json and type(request.json['hostname']) != unicode:
-        return make_response(jsonify({'error': 'Hostname not unicode.'}), 400)
-    elif 'locked_by' in request.json and type(request.json['locked_by']) != unicode:
-        return make_response(jsonify({'error': 'Need locked_by name'}), 400)
-    else:
+        abort(400, "Not a JSON request")
+    with client.context():
         hostname = request.json['hostname']
-        device_key = ndb.Key(ApDevice, hostname)
-        device = device_key.get()
-        device.lock_status = True
-        device.locked_by = request.json['locked_by']
-        device.put()
-        return jsonify(result=True, id=hostname)
+        if type(hostname) is list:
+            hostnames = hostname
+            device_keys = [ndb.Key(ApDevice, x) for x in hostnames]
+            devices = ndb.get_multi(device_keys)
+            for d in devices:
+                d.lock_status = True
+                d.locked_by = request.json['locked_by']
+            ndb.put_multi(devices)
+            return jsonify(result=True, id=hostnames)
+        elif 'hostname' in request.json and type(request.json['hostname']) != str:
+            return make_response(jsonify({'error': 'Hostname not string'}), 400)
+        elif 'locked_by' in request.json and type(request.json['locked_by']) != str:
+            return make_response(jsonify({'error': 'locked_by name not string'}), 400)
+        else:
+            hostname = request.json['hostname']
+            device_key = ndb.Key(ApDevice, hostname)
+            device = device_key.get()
+            device.lock_status = True
+            device.locked_by = request.json['locked_by']
+            device.put()
+            return jsonify(result=True, id=hostname)
+
 
 @app.route('/devices/unlock', methods=['PUT'])
 def unlock_devices():
@@ -146,24 +158,28 @@ def unlock_devices():
     """
     if not request.json:
         return make_response(jsonify({'error': 'Need json dict.'}), 400)
-    elif 'hostname' in request.json and type(request.json['hostname']) != unicode:
-        return make_response(jsonify({'error': 'Hostname not unicode.'}), 400)
-    elif type(request.json['hostname']) is list:
-        hostnames = request.json['hostname']
-        device_keys = [ndb.Key(ApDevice, x) for x in hostnames]
-        devices = ndb.get_multi(device_keys)
-        for d in devices:
-            d.lock_status = False
-        ndb.put_multi(devices)
-        return jsonify(result=True, id=hostnames)
-    else:
+    with client.context():
         hostname = request.json['hostname']
-        device_key = ndb.Key(ApDevice, hostname)
-        device = device_key.get()
-        device.lock_status = False
-        device.locked_by = None
-        device.put()
-        return jsonify(result=True, id=hostname)
+        if type(hostname) is list:
+            hostnames = hostname
+            device_keys = [ndb.Key(ApDevice, x) for x in hostnames]
+            devices = ndb.get_multi(device_keys)
+            for d in devices:
+                d.lock_status = False
+                d.locked_by = None
+            ndb.put_multi(devices)
+            return jsonify(result=True, id=hostnames)
+
+        elif 'hostname' in request.json and type(request.json['hostname']) != str:
+            return make_response(jsonify({'error': 'Hostname not string'}), 400)
+        else:
+            device_key = ndb.Key(ApDevice, hostname)
+            device = device_key.get()
+            device.lock_status = False
+            device.locked_by = None
+            device.put()
+            return jsonify(result=True, id=hostname)
+
 
 @app.route('/devices/delete', methods=['PUT'])
 def delete():
@@ -174,12 +190,14 @@ def delete():
 
     @returns Hosts deleted message if success.
     """
-    hostname = request.json['hostname']
-    device_key = ndb.Key(ApDevice, hostname)
-    device_key.delete()
-    return "%s deleted.\n" % hostname
+    with client.context():
+        hostname = request.json['hostname']
+        device_key = ndb.Key(ApDevice, hostname)
+        device_key.delete()
+        return "%s deleted.\n" % hostname
 
 # Querying devices.
+
 
 @app.route('/devices/', methods=['GET'])
 def get_devices():
@@ -189,9 +207,10 @@ def get_devices():
 
     @returns list of devices
     """
-    devices_query = ApDevice.query()
-    devices_entity = ndb_json.dumps(devices_query, indent=0, sort_keys=True)
-    return devices_entity
+    with client.context():
+        devices_list = ApDevice.query().fetch()
+        return jsonify(multi_ndb_serialize.dump(devices_list))
+
 
 @app.route('/devices/<hostname>', methods=['GET'])
 def show_device(hostname):
@@ -201,10 +220,11 @@ def show_device(hostname):
 
     @returns python dict of device
     """
-    device_key = ndb.Key(ApDevice, hostname)
-    device = device_key.get()
-    device_js = ndb_json.dumps(device, indent=0)
-    return device_js
+    with client.context():
+        device_key = ndb.Key(ApDevice, hostname)
+        device = device_key.get()
+        return jsonify(ndb_serialize.dump(device))
+
 
 @app.route('/unlocked_devices/', methods=['GET'])
 def get_unlocked_devices():
@@ -214,9 +234,10 @@ def get_unlocked_devices():
 
     @returns list of devices
     """
-    devices_query = ApDevice.query(ApDevice.lock_status==False)
-    devices_entity = ndb_json.dumps(devices_query, indent=0, sort_keys=True)
-    return devices_entity
+    with client.context():
+        devices_list = ApDevice.query(ApDevice.lock_status == False).fetch()
+        return jsonify(multi_ndb_serialize.dump(devices_list))
+
 
 @app.route('/devices/location', methods=['PUT'])
 def filter_by_location():
@@ -229,16 +250,17 @@ def filter_by_location():
     """
     if not request.json:
         return make_response(jsonify({'error': 'Need json dict.'}), 400)
+    with client.context():
+        devices_list = ApDevice.query(ApDevice.ap_label == request.json["ap_label"],
+                                      ApDevice.lab_label == request.json["lab_label"],
+                                      ApDevice.lock_status == False).fetch()
+        return jsonify(multi_ndb_serialize.dump(devices_list))
 
-    devices_query = ApDevice.query(ApDevice.ap_label==request.json["ap_label"],
-                                   ApDevice.lab_label==request.json["lab_label"],
-                                   ApDevice.lock_status==False)
-    devices_entity = ndb_json.dumps(devices_query, indent=0, sort_keys=True)
-    return devices_entity
 
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
+
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=8080, debug=True)
