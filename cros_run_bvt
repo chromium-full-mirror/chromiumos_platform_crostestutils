@@ -100,11 +100,8 @@ fi
 $DEBUG test_that "${OPTIONS[@]}" "$DUT" "${TESTS[@]}"
 AUTOTEST_STATUS=$?
 
-# Run mostly the same Tast tests as the bvt-tast-cq suite regardless of flags.
-# Exclude "meta" tests, as they're just designed to exercise Tast itself.
-$DEBUG tast -verbose run -build=false "$DUT" \
-  '(!disabled && ("group:mainline" || !"group:*") && !informational &&
-    !"name:meta.*")'
+# Run a subset of Tast tests for qualifying a model before lab deployment.
+$DEBUG tast -verbose run -build=false "$DUT" '(!disabled && "group:labqual")'
 TAST_STATUS=$?
 
 if [ ${AUTOTEST_STATUS} -ne 0 ] || [ ${TAST_STATUS} -ne 0 ]; then
