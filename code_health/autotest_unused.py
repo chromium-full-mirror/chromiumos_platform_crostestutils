@@ -24,6 +24,7 @@ interpret that as the function being called. We're optimizing for safety here.
 """
 
 import argparse
+import copy
 import logging
 import os
 import re
@@ -42,6 +43,19 @@ REPOS_CALLING_AUTOTEST = [
     os.path.join(THIRD_PARTY_DIR, 'autotest-tests-cheets'),
     os.path.join(THIRD_PARTY_DIR, 'autotest-tests-lakitu'),
     os.path.join(THIRD_PARTY_DIR, 'autotest-tests-kumo'),
+]
+
+
+# Unix-style globs to always ignore when grepping.
+ALWAYS_IGNORE_GLOBS = [
+    '**/server/cros/faft/fw-testing-configs/**',
+    '**/site_utils/rpm_control_system/BeautifulSoup.py',
+]
+
+# Unix-style globs of unittest paths to sometimes ignore when grepping.
+UNITTEST_GLOBS = [
+    '**_unittest.py',
+    '**_functional_test.py'
 ]
 
 
@@ -107,13 +121,13 @@ def grep(pattern, paths, exclude_unittests=False):
         '--no-line-number',
         # Require word-boundaries.
         '-w',
-        # Always exclude fw-testing-configs/.
-        '--iglob',
-        '\'!**/server/cros/faft/fw-testing-configs/**\'',
     ]
+    ignore_globs = copy.copy(ALWAYS_IGNORE_GLOBS)
     if exclude_unittests:
-        flags += ['--iglob', '\'!*_unittest.py\'']
-    cmd = 'rg %s \'%s\' %s' % (' '.join(flags), pattern, ' '.join(paths))
+        ignore_globs.extend(UNITTEST_GLOBS)
+    for glob in ignore_globs:
+        flags.extend(['--iglob', "'!%s'" % glob])
+    cmd = "rg %s '%s' %s" % (' '.join(flags), pattern, ' '.join(paths))
     proc = subprocess.run(cmd,
                           stdout=subprocess.PIPE,
                           universal_newlines=True,
