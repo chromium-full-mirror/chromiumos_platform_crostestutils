@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+"""A command to display summary statistics from runs of 'bootperf'.
+
+Command line options allow selecting from one of four sets of
+performance statistics:
+ 1. boot time statistics (selected by --keyset boot) measure time
+    spent since kernel startup;
+ 2. disk statistics (selected by --keyset disk) measure total bytes
+    read from the boot device since kernel startup;
+ 3. firmware time statistics (selected by --keyset firmware) measure
+    time spent since CPU power on.
+ 4. reboot time statistics (selected by --keyset reboot) measure
+    time spent since the shutdown request immediately preceding
+    the request.
+
+The various statistics are recorded as cumulative time (or disk read)
+since kernel startup (or CPU power on), sampled when specific events
+occur during boot.  Events include such things as 'startup', (the
+moment when the upstart 'startup' job begins running), and 'login',
+(when the Chrome OS login screen is displayed).  By default, all
+recorded events are included in the output; command line options
+allow restricting the view to a selected subset of events.
+
+Separate command line options allow selecting from one of two
+different display modes.  When --averages is selected, the display
+shows the average value and sample standard deviation (as a percent
+of the average) for all selected events.  The --averages display
+also calculates the difference (in time or bytes) between adjacent
+events, and shows the average and sample standard deviation of the
+differences.
+
+The --rawdata display shows the raw data value associated with each
+event for each boot:  Each line of output represents the event values
+for one boot iteration.
+"""
+
+import argparse
+import os
+import sys
+
+import perfprinter
+import resultsdir
+import resultset
+
+
+_USAGE = f'{os.path.basename(sys.argv[0])} [options] [results-directory ...]'
+_DESCRIPTION = """\
+Summarize boot time performance results.  The result directory
+arguments are directories previously specified as output for the
+'bootperf' script.
+"""
+
+
+def _SetupOptions():
+  """Create an ArgumentParser for the command line.
+
+  Returns:
+    The configured ArgumentParser object.
+  """
+  argparser = argparse.ArgumentParser(usage=_USAGE, description=_DESCRIPTION)
+
+  arggroup = argparser.add_argument_group(title='Statistics selection')
+
+  keyset_help = ('Selects the set of statistics to display; '
+                    'choose one of ')
+  keyset_help += "'" + resultset.TestResultSet.AVAILABLE_KEYSETS[0] + "'"
+  for keyset in resultset.TestResultSet.AVAILABLE_KEYSETS[1:-1]:
+    keyset_help += ", '" + keyset + "'"
+  keyset_help += (", or '" +
+                  resultset.TestResultSet.AVAILABLE_KEYSETS[-1] + "'.")
+  keyset_default = resultset.TestResultSet.BOOTTIME_KEYSET
+  keyset_help += "  (Default is '" + keyset_default + "'.)"
+  arggroup.add_argument(
+      '-k', '--keyset', action='store', dest='keyset',
+      choices=resultset.TestResultSet.AVAILABLE_KEYSETS,
+      help=keyset_help)
+  argparser.set_defaults(keyset=keyset_default)
+
+  arggroup = argparser.add_argument_group('Event selection')
+  arggroup.add_argument(
+      '-e', '--event', action='append',
+      dest='eventnames',
+      help='Restrict statistics to the comma-separated list of events.')
+
+  arggroup = argparser.add_argument_group(
+      'Display mode selection (choose one)')
+  arggroup.add_argument(
+      '-a', '--averages', action='store_true',
+      dest='print_averages',
+      help='Display a summary of the averages of chosen statistics (default).')
+  arggroup.add_argument(
+      '-r', '--rawdata', action='store_true',
+      dest='print_raw',
+      help='Display raw data from all boot iterations.')
+  argparser.set_defaults(print_averages=False)
+  argparser.set_defaults(print_raw=False)
+
+  # Positional arguments (results_directory)
+  argparser.add_argument('results_directory',
+                         help='bootperf results directory.', nargs='?')
+  return argparser
+
+
+def _ProcessDisplayOptions(args):
+  """Determine options controlling the display format.
+
+  Command options allow choosing either raw data format, or summary
+  statistics format.  The default option is the summary format.
+  It's not allowed to select both formats.
+
+  Args:
+    args: Parsed command line options data.
+
+  Returns:
+    A print function or None on invalid display options.
+  """
+  display_count = 0
+  if args.print_averages:
+    display_count += 1
+    printfunc = perfprinter.PrintStatisticsSummary
+  if args.print_raw:
+    display_count += 1
+    printfunc = perfprinter.PrintRawData
+  if display_count == 0:
+    printfunc = perfprinter.PrintStatisticsSummary
+  elif display_count > 1:
+    print("Can't use -a and -r together.\n", file=sys.stderr)
+    return None
+  return printfunc
+
+
+def _ProcessEventlistOptions(args):
+  """Determine whether we'll display all events, or a subset.
+
+  Command options allow restricting a chosen key set to a
+  list of specific events.  If the option is present, return
+  the list of events.  Otherwise, return `None`.
+
+  Args:
+    args: Parsed command line options data.
+
+  Returns:
+    A list of events names.
+  """
+  if not args.eventnames:
+    return None
+  eventlist = []
+  for kl in args.eventnames:
+    eventlist.extend(kl.split(','))
+  return eventlist
+
+
+def main(argv):
+  """Canonical main routine."""
+  argparser = _SetupOptions()
+  args = argparser.parse_args(argv)
+  printfunc = _ProcessDisplayOptions(args)
+  keyset_type = args.keyset
+  eventlist = _ProcessEventlistOptions(args)
+  if printfunc is None or keyset_type is None:
+    argparser.print_help()
+    sys.exit(1)
+  results_dir = args.results_directory
+  if not results_dir:
+    results_dir = ['.']
+  printfunc(resultsdir.ReadResultsDirectory,
+            results_dir, keyset_type, eventlist)
+
+
+if __name__ == '__main__':
+  main(sys.argv[1:])
