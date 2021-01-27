@@ -17,9 +17,9 @@ import constants
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 sys.path.append(constants.SOURCE_ROOT)
 
-from chromite.lib.gce import GceContext
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_test_lib
+import gce  # TODO(crbug.com/1170006): Move back to chromite.
 from chromite.lib import osutils
 from chromite.lib import path_util
 from crostestutils.au_test_harness.au_worker import AUWorker
@@ -55,8 +55,8 @@ class GceAuWorkerTest(cros_test_lib.MockTempDirTestCase):
     # Mock out model or class level methods.
     self.PatchObject(AUWorker, 'GetNextResultsPath', autospec=True,
                      return_value=('./log', './fail'))
-    self.PatchObject(GceContext, 'ForServiceAccountThreadSafe',
-                     spec=GceContext.ForServiceAccountThreadSafe)
+    self.PatchObject(gce.GceContext, 'ForServiceAccountThreadSafe',
+                     spec=gce.GceContext.ForServiceAccountThreadSafe)
 
   def testCreateInstance(self):
     """Verifies _CreateInstance creates an instance with |image_path|.

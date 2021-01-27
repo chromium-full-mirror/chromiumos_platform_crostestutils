@@ -19,7 +19,7 @@ from multiprocessing import Process
 
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
-from chromite.lib import gce
+import gce  # TODO(crbug.com/1170006): Move back to chromite.
 from chromite.lib import gs
 from chromite.lib import path_util
 from crostestutils.au_test_harness import au_worker
