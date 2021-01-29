@@ -30,7 +30,7 @@ sys.path.append(constants.SOURCE_ROOT)
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
 from chromite.lib import parallel
-from chromite.lib import sudo
+import sudo  # TODO(crbug.com/1170006): Move back to chromite.
 from chromite.lib import timeout_util
 
 from crostestutils.au_test_harness import au_test
