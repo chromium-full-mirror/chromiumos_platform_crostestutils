@@ -10,7 +10,7 @@ from __future__ import print_function
 import os
 import select
 import socket
-import SocketServer
+import socketserver
 import threading
 
 
@@ -41,10 +41,10 @@ class Filter(object):
     return data
 
 
-class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+class CrosTestProxy(socketserver.ThreadingMixIn, socketserver.TCPServer):
   """A transparent proxy for simulating network errors"""
 
-  class _Handler(SocketServer.BaseRequestHandler):
+  class _Handler(socketserver.BaseRequestHandler):
     """Proxy connection handler that passes data though a filter"""
 
     def setup(self):
@@ -114,7 +114,7 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     self.__serving = False
 
     try:
-      SocketServer.TCPServer.__init__(self,
+      socketserver.TCPServer.__init__(self,
                                       ('', port_in),
                                       self._Handler)
     except socket.error:
@@ -134,7 +134,7 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
   # ==========================
 
-  # Override of the version of this method from SocketServer.
+  # Override of the version of this method from socketserver.
   # It's duplicated, other than adding __is_started event.
   # Bug chromium-os:16574
   def serve_forever(self, poll_interval=0.5):
@@ -160,7 +160,7 @@ class CrosTestProxy(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     self.__is_started.clear()
     self.__is_shut_down.set()
 
-  # Duplicate override of the version of this method from SocketServer so
+  # Duplicate override of the version of this method from socketserver so
   # that we can access the same __ variables as serve_forever.
   # Bug chromium-os:16574
   def shutdown(self):

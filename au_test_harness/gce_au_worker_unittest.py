@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -8,10 +8,10 @@
 
 from __future__ import print_function
 
-import mock
 import os
 import sys
 import unittest
+from unittest import mock
 
 import constants
 sys.path.append(constants.CROS_PLATFORM_ROOT)
@@ -19,7 +19,7 @@ sys.path.append(constants.SOURCE_ROOT)
 
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_test_lib
-import gce  # TODO(crbug.com/1170006): Move back to chromite.
+from chromite.lib import gce
 from chromite.lib import osutils
 from chromite.lib import path_util
 from crostestutils.au_test_harness.au_worker import AUWorker

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -30,7 +30,7 @@ sys.path.append(constants.SOURCE_ROOT)
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
 from chromite.lib import parallel
-import sudo  # TODO(crbug.com/1170006): Move back to chromite.
+from chromite.lib import sudo
 from chromite.lib import timeout_util
 
 from crostestutils.au_test_harness import au_test

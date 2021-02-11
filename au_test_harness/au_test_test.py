@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -13,7 +13,7 @@ import signal
 import sys
 import time
 import unittest
-import mock
+from unittest import mock
 
 from multiprocessing import Process, Value
 

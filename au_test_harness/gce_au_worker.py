@@ -13,13 +13,14 @@ import random
 import shutil
 import tempfile
 import time
-import urllib2
+import urllib.error
+import urllib.request
 
 from multiprocessing import Process
 
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
-import gce  # TODO(crbug.com/1170006): Move back to chromite.
+from chromite.lib import gce
 from chromite.lib import gs
 from chromite.lib import path_util
 from crostestutils.au_test_harness import au_worker
@@ -310,7 +311,7 @@ class GCEAUWorker(au_worker.AUWorker):
       shutil.copy(self.tarball_local, fail_directory)
       if self.ssh_private_key is not None:
         shutil.copy(self.ssh_private_key, fail_directory)
-    except (shutil.Error, OSError, IOError) as e:
+    except OSError as e:
       logging.warning('Ignoring error while copying logs: %s', e)
 
   def _GsPathToUrl(self, gs_path):
@@ -342,7 +343,7 @@ class GCEAUWorker(au_worker.AUWorker):
 def _OnGCE():
   """Checks if running on a GCE VM or not."""
   try:
-    urllib2.urlopen('http://metadata.google.internal', timeout=10)
+    urllib.request.urlopen('http://metadata.google.internal', timeout=10)
     return True
-  except urllib2.URLError:
+  except urllib.error.URLError:
     return False
