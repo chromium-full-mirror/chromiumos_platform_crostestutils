@@ -9,7 +9,6 @@
 SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 SRC_DIR=$(realpath "${SCRIPT_ROOT}/../../")
 SCRIPTS_DIR="${SRC_DIR}/scripts"
-CHROMITE_DIR=$(realpath "${SRC_DIR}/../chromite")
 
 . "${SCRIPTS_DIR}/lib/shflags/shflags" || die "Couldn't find shflags"
 
@@ -109,8 +108,6 @@ main() {
   cp "${script_dir}/call_autoserv.py" "tarball/${FLAGS_output_tag}/."
   cp "${SRC_DIR}/third_party/autotest/files/site_utils/generate_test_report" \
     "tarball/${FLAGS_output_tag}/generate_test_report"
-  # Copy python lib used in generate_test_report.
-  cp -a "${CHROMITE_DIR}" "tarball/${FLAGS_output_tag}"
   echo "Creating ${FLAGS_to}/${FLAGS_output_tag}.tar.bz2..."
   mkdir -p "${FLAGS_to}"
   cd tarball
