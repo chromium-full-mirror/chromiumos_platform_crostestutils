@@ -217,7 +217,6 @@ class BootPerf:
     """Prepares the working temp and output directories for the test."""
     self._process_output_dir()
     self._validate_output_dir()
-    self._make_tmp_dir()
 
   def _process_output_dir(self):
     """Creates the output dir or use the current working dir for test output."""
@@ -260,6 +259,7 @@ class BootPerf:
     summary_dir = os.path.join(iter_rundir, _RUNDIR_SUMMARY)
     all_results_dir = os.path.join(iter_rundir, _RUNDIR_ALL_RESULTS)
 
+    self._make_tmp_dir()
     os.mkdir(iter_rundir)
     time_now = datetime.datetime.now().strftime('%H:%M:%S')
     print(f'Test started: {time_now} - {logfile}')
@@ -306,7 +306,6 @@ class BootPerf:
           | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
     else:
       shutil.rmtree(self.tmp_dir)
-      del self.tmp_dir
 
     self.current_iter += 1
 
