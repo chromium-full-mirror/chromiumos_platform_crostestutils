@@ -102,7 +102,7 @@ def _SetupOptions():
 
   # Positional arguments (results_directory)
   argparser.add_argument('results_directory',
-                         help='bootperf results directory.', nargs='?')
+                         help='bootperf results directory.', nargs='*')
   return argparser
 
 
