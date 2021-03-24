@@ -64,6 +64,36 @@ def _ReadResultsJSONFile(results, file_):
 
 _RESULTS_CHART = 'summary/tests/platform.BootPerf/results-chart.json'
 
+def _ReadKeyvalFile(results, file_):
+  """Read an autotest keyval file, and process the results.
+
+  The `file_` parameter is a file object with contents in autotest
+  perf keyval format:
+      <keyname>{perf}=<value>
+
+  Each iteration of the test is terminated with a single blank line,
+  including the last iteration.  Each iteration's results are added
+  to the `results` parameter, which should be an instance of
+  TestResultSet.
+
+  Args:
+    results: A TestResultSet where the result data will be collected.
+    file_: File object for the results file to be read.
+  """
+  kvd = {}
+  for line in file_:
+    if line == '\n':
+      results.AddIterationResults(kvd)
+      kvd = {}
+      continue
+    m = _PERF_KEYVAL_PATTERN.match(line)
+    if m is None:
+      continue
+    kvd[m.group(1)] = m.group(2)
+
+
+_RESULTS_KEYVAL = 'summary/platform_BootPerfServer/results/keyval'
+
 def ReadResultsDirectory(dir_):
   """Process results from a 'bootperf' output directory.
 
@@ -81,11 +111,19 @@ def ReadResultsDirectory(dir_):
   dirlist.sort()
   for rundir in dirlist:
     keyval_path = os.path.join(dir_, rundir, _RESULTS_CHART)
+    # Test if the run.??? dir contains a tast result-chart.json file.
+    if os.path.exists(keyval_path):
+      reader = _ReadResultsJSONFile
+    else:
+      # The directory is generated using autotest.
+      keyval_path = os.path.join(dir_, rundir, _RESULTS_KEYVAL)
+      reader = _ReadKeyvalFile
+
     try:
       kvf = open(keyval_path)
     except IOError as e:
       print('Warning: error in reading the test result: ', e)
       continue
-    _ReadResultsJSONFile(res_set, kvf)
+    reader(res_set, kvf)
   res_set.FinalizeResults()
   return res_set
