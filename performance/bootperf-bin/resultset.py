@@ -168,19 +168,16 @@ class _KeySet(object):
   def _CheckCounts(self):
     """Check the validity of the keyvals results dictionary.
 
-    Note that each keyval must have occurred the same number of times.
+    Note that keyvals might have occurred different number of times.
 
     Returns:
-      When this check succeeds, it returns the total number of occurrences;
+      When this check succeeds, it returns the max number of occurrences;
       on failure return `None`.
     """
-    check = [len(v) for v in self._keyvals.values()]
-    if not check:
+    occurrences = [len(v) for v in self._keyvals.values()]
+    if not occurrences:
       return None
-    for i in range(1, len(check)):
-      if check[i] != check[i-1]:
-        return None
-    return check[0]
+    return max(occurrences)
 
   def AddIterationResults(self, runkeys):
     """Add results for one iteration.
@@ -238,7 +235,9 @@ class _KeySet(object):
     Returns:
       A vector of difference.
     """
-    assert len(self._keyvals[key0]) == len(self._keyvals[key1])
+    if len(self._keyvals[key0]) != len(self._keyvals[key1]):
+      raise ValueError(f'cannot calculate deltas between {key0} and {key1} '
+                       'of different occurrences')
     return [b-a for a, b in zip(self._keyvals[key0], self._keyvals[key1])]
 
   def Statistics(self, key):

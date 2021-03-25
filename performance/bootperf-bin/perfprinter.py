@@ -76,10 +76,13 @@ def PrintStatisticsSummary(reader, dirlist, keytype, keylist):
       (valueavg, valuedev) = keyset.Statistics(stat)
       valuepct = int(100.0 * valuedev / valueavg + 0.5)
       if prevstat:
-        (deltaavg, deltadev) = keyset.DeltaStatistics(prevstat, stat)
-        if deltaavg == 0.0:
-          deltaavg = 1.0
-          print('deltaavg is zero! (delta is {} to {})'.format(prevstat, stat))
+        try:
+          (deltaavg, deltadev) = keyset.DeltaStatistics(prevstat, stat)
+          if deltaavg == 0.0:
+            deltaavg = 1.0
+            print(f'deltaavg is zero! (delta is {prevstat} to {stat})')
+        except ValueError as ve:
+          print('Warning:', ve)
 
         deltapct = int(100.0 * deltadev / deltaavg + 0.5)
       else:
