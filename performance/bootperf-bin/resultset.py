@@ -196,9 +196,7 @@ class _KeySet(object):
     """Finalize this object's results.
 
     This method makes available the `markers` and `num_iterations`
-    instance variables.  It also ensures that every keyval occurred
-    in every iteration by requiring that all keyvals have the same
-    number of data points.
+    instance variables.
 
     Returns:
       Whether the results directory contains valid data.

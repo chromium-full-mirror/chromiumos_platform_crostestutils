@@ -51,11 +51,11 @@ def PrintStatisticsSummary(reader, dirlist, keytype, keylist):
       keytype == resultset.TestResultSet.FIRMWARE_KEYSET):
     header = '{:>5} {:>3}  {:>5} {:>3}  {}'.format(
         'time', 's%', 'dt', 's%', 'event')
-    tformat = '{:>5} {:2d}%  {:>5} {:2d}%  {}'
+    tformat = '{:>5} {:2d}%  {:>5} {}  {}'
   else:
     header = '{:>7} {:>3}  {:>7} {:>3}  {}'.format(
         'diskrd', 's%', 'delta', 's%', 'event')
-    tformat = '{:>7} {:2d}%  {:>7} {:2d}%  {}'
+    tformat = '{:>7} {:2d}%  {:>7} {}  {}'
   havedata = False
   for dir_ in dirlist:
     results = reader(dir_)
@@ -81,12 +81,13 @@ def PrintStatisticsSummary(reader, dirlist, keytype, keylist):
           if deltaavg == 0.0:
             deltaavg = 1.0
             print(f'deltaavg is zero! (delta is {prevstat} to {stat})')
+          deltapct = '{:2d}%'.format(int(100.0 * deltadev / deltaavg + 0.5))
         except ValueError as ve:
           print('Warning:', ve)
+          deltapct = '(N/A)'
 
-        deltapct = int(100.0 * deltadev / deltaavg + 0.5)
       else:
-        deltapct = valuepct
+        deltapct = '{:2d}%'.format(valuepct)
       (valstring, val_printed) = keyset.PrintableStatistic(valueavg)
       delta = val_printed - prevvalue
       (deltastring, _) = keyset.PrintableStatistic(delta)
