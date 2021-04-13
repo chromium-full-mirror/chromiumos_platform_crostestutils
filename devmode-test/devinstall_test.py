@@ -151,6 +151,9 @@ class DevModeTest(object):
           self.device.run(['sudo', '-u', 'chronos', '--',
                            os.path.join(prefix, prog),
                            '-c', '"print(\'hello world\')"'])
+
+      # We need emerge to work so we can install more binpkgs.
+      self.device.run(['emerge', '--info'])
     except (cros_build_lib.RunCommandError,
             remote_access.SSHConnectionError) as e:
       self.devserver.PrintLog()
