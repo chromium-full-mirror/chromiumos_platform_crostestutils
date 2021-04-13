@@ -147,7 +147,7 @@ class DevModeTest(object):
       # Symlinks can be tricky, and running python from one place might work
       # while it fails from another.  Test all the prefixes (and $PATH).
       for prefix in ('/usr/bin', '/usr/local/bin', '/usr/local/usr/bin', ''):
-        for prog in ('python', 'python2', 'python3'):
+        for prog in ('python', 'python3'):
           self.device.run(['sudo', '-u', 'chronos', '--',
                            os.path.join(prefix, prog),
                            '-c', '"print(\'hello world\')"'])
