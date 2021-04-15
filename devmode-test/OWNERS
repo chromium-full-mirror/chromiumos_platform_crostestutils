@@ -1,5 +1,7 @@
 set noparent
 
+include chromiumos/platform2:/dev-install/OWNERS
+
 dhanyaganesh@chromium.org
 dhanyaganesh@google.com
 seanabraham@chromium.org
