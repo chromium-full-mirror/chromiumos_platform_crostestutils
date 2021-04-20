@@ -95,7 +95,7 @@ AUTOTEST_STATUS=$?
 
 if [ ${FLAGS_labqual} -eq ${FLAGS_TRUE} ]; then
   # Run a subset of Tast tests for qualifying a model before lab deployment.
-  $DEBUG tast -verbose run -build=false "$DUT" '(!disabled && "group:labqual")'
+  $DEBUG tast -verbose run -build=false "$DUT" '("group:labqual")'
   TAST_STATUS=$?
 else
   # Run mostly the same Tast tests as the bvt-tast-cq suite regardless of flags.
