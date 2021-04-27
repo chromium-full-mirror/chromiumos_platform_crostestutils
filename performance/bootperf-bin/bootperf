@@ -253,9 +253,12 @@ class BootPerf:
   def _run_boot_test_once(self):
     """Run the platform.BootPerf tast test once."""
     remote = self.args.ip_address
-
-    iter_rundir = f'{_RUNDIR}.{self._current_iter_str()}'
-    logfile = os.path.join(os.getcwd(), iter_rundir, _RUNDIR_LOG)
+    # |iter_rundir| is the absolute path of the run.??? directory for the
+    # current iteration.
+    iter_rundir = os.path.join(
+        self.output_dir,
+        f'{_RUNDIR}.{self._current_iter_str()}')
+    logfile = os.path.join(iter_rundir, _RUNDIR_LOG)
     summary_dir = os.path.join(iter_rundir, _RUNDIR_SUMMARY)
     all_results_dir = os.path.join(iter_rundir, _RUNDIR_ALL_RESULTS)
 
