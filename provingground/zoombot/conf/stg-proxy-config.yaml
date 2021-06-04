@@ -1,0 +1,39 @@
+# This is the sample configuration file for meetbot proxy.
+# meetbot proxy accept test request to create meet conference rooms.
+
+# accounts provides a list of accounts used to do meet service login and
+# create / join meeting rooms as participants.
+# There are two login types as indicated by "loginType" tag for each account:
+#   oauth - use google account to do sigle sign-on.
+#   password - zoom account used for zoom direct login.
+accounts:
+  - name: account2@example.com
+    password: pass4account2
+    loginType: oauth
+  - name: account1@example.com
+    password: pass4account1
+    loginType: password
+# instances provides a list of bot servers that host the Chrome browser from
+# which the participants can create / join the meeting.
+# Chrome browser should be running in debugging mode with debugging port
+# provided with the "port" tag
+instances:
+  TINY: # Instances that can run one-to-one conference (2 participants)
+    - ipaddr: 192.168.0.1
+      port: 9222
+    - ipaddr: 192.168.0.2
+      port: 9222
+  SMALL: # Instances that can run small size conference (5 participants)
+    - ipaddr: 192.168.0.3
+      port: 9222
+  LARGE: # Instances that can run large size conference (17 participants)
+    - ipaddr: 192.168.0.4
+      port: 9222
+  CLASS: # Instances that can run class size conference (> 37 participants)
+    - ipaddr: 192.168.0.5
+      port: 9222
+# tokens provide a list of tokens that can be used to authenticate the request.
+# true: token is enabled; false: token is disabled.
+tokens:
+  stg-6d9b28a3-bc10-4389-8ef3-040262b34b04: true
+  stg-39278ce5-cc13-4bce-b054-0177c665a088: false
