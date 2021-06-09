@@ -5,7 +5,6 @@
 package main
 
 import (
-	"firmware/internal/pkg/monorail"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -285,17 +284,12 @@ func init() {
 
 // Main collects and reports info on all firmware end-to-end tests.
 func main() {
-	// Collect written tests and unwritten/flaky test issues
 	existingTests, err := collectExistingE2ETests()
 	if err != nil {
 		log.Fatalf("collecting existing tests: %v", err)
 	}
-	issues, err := monorail.IssuesList(monorail.UnwrittenFwTestReqParams)
-	if err != nil {
-		log.Fatalf("collecting unwritten tests: %v", err)
-	}
 
-	// Report on tests and issues
+	// Print results
 	if len(existingTests) > 0 {
 		log.Print("### Existing end-to-end FW tests ###")
 		for _, t := range existingTests {
@@ -306,23 +300,9 @@ func main() {
 		log.Print("No end-to-end FW tests found.")
 	}
 	log.Print()
-	if len(issues) > 0 {
-		log.Print("### Unwritten/flaky FW tests ###")
-		for _, issue := range issues {
-			log.Print(issue)
-		}
-		log.Printf("Total: %d", len(issues))
-	} else {
-		log.Print("No unwritten FW tests found.")
-	}
-	log.Print()
 	log.Print("### TOTALS ###")
 	log.Printf("Existing e2e tests:          %d", len(existingTests))
-	log.Printf("Unwritten/flaky test issues: %d", len(issues))
-	if len(issues) > 0 {
-		p := float64(len(existingTests)) / float64((len(issues) + len(existingTests))) * 100
-		log.Printf("Proportion of tests written: %.2f%%", p)
-	}
+
 	var unowned int
 	broadGroups := []string{
 		"Chrome OS Team",
