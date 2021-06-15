@@ -24,7 +24,7 @@ import constants
 sys.path.append(constants.SOURCE_ROOT)
 sys.path.append(constants.CROS_PLATFORM_ROOT)
 
-# pylint: disable=C0413
+# pylint: disable=wrong-import-position
 from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
@@ -32,7 +32,6 @@ from chromite.lib import dev_server_wrapper
 from chromite.lib import image_lib
 from chromite.lib import osutils
 from chromite.lib import remote_access
-from chromite.lib import vm
 
 from crostestutils.lib import test_helper
 
@@ -101,14 +100,10 @@ class DevModeTest(object):
 
   def PrepareTest(self):
     """Pre-test modification to the image and env to setup test."""
-    logging.info('Setting up the image %s for vm testing.', self.image_path)
-    vm_path = vm.CreateVMImage(image=self.image_path, board=self.board,
-                               updatable=False)
-
-    logging.info('Making copy of the vm image %s to manipulate.', vm_path)
+    logging.info('Making copy of the image %s to manipulate.', self.image_path)
     self.working_image_path = os.path.join(self.tmpdir,
-                                           os.path.basename(vm_path))
-    shutil.copyfile(vm_path, self.working_image_path)
+                                           os.path.basename(self.image_path))
+    shutil.copyfile(self.image_path, self.working_image_path)
     logging.debug('Copy of vm image stored at %s.', self.working_image_path)
 
     self._WipeDevInstall()
@@ -176,7 +171,7 @@ def main():
                       help='binhost override. By default, starts up a devserver'
                       ' and uses it as the binhost.')
   parser.add_argument('board', nargs=1, help='board to use.')
-  parser.add_argument('image_path', nargs=1, help='path to test|vm image.')
+  parser.add_argument('image_path', nargs=1, help='path to test image.')
   parser.add_argument('-v', '--verbose', default=False, action='store_true',
                       help='Print out added debugging information')
   options = parser.parse_args()
