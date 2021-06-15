@@ -9,12 +9,9 @@ from __future__ import print_function
 
 import glob
 import multiprocessing
-import os
 
-import constants
 from chromite.lib import cros_build_lib
 from chromite.lib import cros_logging as logging
-from chromite.lib import path_util
 
 
 def _GetTotalMemoryGB():
@@ -41,35 +38,6 @@ def CalculateDefaultJobs():
   cpu_count = multiprocessing.cpu_count() / 2
   mem_count = int((_GetTotalMemoryGB() - 10) / 2)
   return max(1, min(cpu_count, mem_count, loop_count))
-
-
-def CreateVMImage(image, board=None, full=True):
-  """Returns the path of the image built to run in a VM.
-
-  VM returned is a test image that can run full update testing on it.  This
-  method does not return a new image if one already existed before.
-
-  Args:
-    image: Path to the image.
-    board: Board that the image was built with. If None, attempts to use the
-           configured default board.
-    full: If the vm image doesn't exist, create a "full" one which supports AU.
-  """
-  vm_image_path = '%s/chromiumos_qemu_image.bin' % os.path.dirname(image)
-  if not os.path.exists(vm_image_path):
-    logging.info('Creating %s', vm_image_path)
-    cmd = ['./image_to_vm.sh',
-           '--from=%s' % path_util.ToChrootPath(os.path.dirname(image)),
-           '--test_image']
-    if full:
-      cmd.extend(['--disk_layout', '2gb-rootfs-updatable'])
-    if board:
-      cmd.extend(['--board', board])
-
-    cros_build_lib.run(cmd, enter_chroot=True, cwd=constants.SOURCE_ROOT)
-
-  assert os.path.exists(vm_image_path), 'Failed to create the VM image.'
-  return vm_image_path
 
 
 def SetupCommonLoggingFormat(verbose=True):
