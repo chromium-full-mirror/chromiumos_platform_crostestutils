@@ -28,7 +28,7 @@ import tempfile
 import textwrap
 
 # Tast tmp results (/tmp/bootperf.XXXXXX) structure:
-# device-config.txt
+# dut-info.txt
 # full.txt
 # results.json
 # streamed_results.jsonl
@@ -47,14 +47,6 @@ _TEST = 'platform.BootPerf'
 _RESULTS_DIR = f'tests/{_TEST}'
 _RESULTS_KEYVAL = f'{_RESULTS_DIR}/results-chart.json'
 _RESULTS_SUMMARY = 'results_json'
-_RESULTS_SUMMARY_FILES = [
-    _RESULTS_DIR,
-    'device-config.txt',
-    'full.txt',
-    'results.json',
-    'streamed_results.jsonl',
-    'timing.json',
-]
 _RESULTS_SUMMARY_FILES_RAW_GLOB = f'{_RESULTS_DIR}/raw.*'
 
 # Structure of a results directory:
@@ -236,16 +228,17 @@ class BootPerf:
 
   def _copy_results_summary(self, dst_dir):
     """Copies the summary of test artifacts."""
-    for res in _RESULTS_SUMMARY_FILES:
-      src = os.path.join(self.tmp_dir, res)
-      dst = os.path.join(dst_dir, res)
-
-      assert os.path.isdir(src) or os.path.isfile(src)
-
-      if os.path.isdir(src):
-        dir_util.copy_tree(src, dst)
-      else:
+    # Copy regular files in the tmp directory (non-recursively).
+    for filename in os.listdir(self.tmp_dir):
+      src = os.path.join(self.tmp_dir, filename)
+      if os.path.isfile(src):
+        dst = os.path.join(dst_dir, filename)
         file_util.copy_file(src, dst)
+    # Copy the results dir for the test.
+    src = os.path.join(self.tmp_dir, _RESULTS_DIR)
+    dst = os.path.join(dst_dir, _RESULTS_DIR)
+    dir_util.copy_tree(src, dst)
+
     # The reboots dir contains archives of syslog messages for each reboot
     # and can be potentially large. Remove it from the summary directory.
     shutil.rmtree(os.path.join(dst_dir, _RESULTS_DIR, 'reboots'))
