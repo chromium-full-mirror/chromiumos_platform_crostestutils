@@ -110,9 +110,9 @@ class AUWorker(object):
 
   def PrepareVMBase(self, image_path, signed_base):
     """Prepares a VM image for worker test."""
-    # Tells the VM tests to use the Qemu image as the start point.
+    # Tells the VM tests to use the test Qemu image as the start point.
     self.vm_image_path = os.path.join(os.path.dirname(image_path),
-                                      'chromiumos_qemu_image.bin')
+                                      'chromiumos_test_image.bin')
     if signed_base:
       self.vm_image_path = self.vm_image_path + '.signed'
 
