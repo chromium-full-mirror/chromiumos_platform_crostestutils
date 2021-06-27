@@ -7,7 +7,7 @@
 
 set -e
 
-WIFI_CRED=/usr/local/etc/wifi_cred
+WIFI_CRED=/usr/local/etc/wifi_creds/wifi_cred
 
 # See do_suspend() in src/third_party/autotest/files/client/cros/power/sys_power.py
 PAUSE_FILE=/run/autotest_pause_ethernet_hook
