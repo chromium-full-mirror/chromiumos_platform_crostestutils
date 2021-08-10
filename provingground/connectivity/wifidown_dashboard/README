@@ -1,0 +1,17 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# How to run
+#   Run python3 populate_wificell_dashboard.py to and go to go/wifi-down the
+    see devices that needs repair
+
+# Troubleshooting
+#   Check paths in constants.py
+#   Make sure dhcp file is latest. (Do repo sync in the folder)
+#   If a new tab is added in go/cros_conn_device_lifecycle, it has to be added
+    to get_wifisheet_data.py
+#   If number of wificell devices exceeded 1000, update swarming query in
+    get_wificell_data.py
+#   change logging level to DEBUG for more logs
+#   debug_main can be used to write intermediate stages to file
