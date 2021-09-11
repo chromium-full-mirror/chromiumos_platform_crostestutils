@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import signal
 import sys
@@ -14,7 +15,6 @@ import unittest
 
 from functools import partial
 
-from chromite.lib import cros_logging as logging
 from chromite.lib import signals
 from crostestutils.au_test_harness import gce_au_worker
 from crostestutils.au_test_harness import vm_au_worker

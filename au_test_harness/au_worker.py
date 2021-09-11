@@ -13,9 +13,8 @@ various types of target.  Types of targets include VM's, real devices, etc.
 from __future__ import print_function
 
 import inspect
+import logging
 import os
-
-from chromite.lib import cros_logging as logging
 
 
 class AUWorker(object):

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import argparse
 import functools
+import logging
 import os
 import sys
 import tempfile
@@ -28,7 +29,6 @@ sys.path.append(constants.SOURCE_ROOT)
 
 # pylint: disable=wrong-import-position
 from chromite.lib import cros_build_lib
-from chromite.lib import cros_logging as logging
 from chromite.lib import parallel
 from chromite.lib import sudo
 from chromite.lib import timeout_util

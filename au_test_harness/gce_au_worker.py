@@ -8,6 +8,7 @@
 from __future__ import print_function
 
 import datetime
+import logging
 import os
 import random
 import shutil
@@ -19,7 +20,6 @@ import urllib.request
 from multiprocessing import Process
 
 from chromite.lib import cros_build_lib
-from chromite.lib import cros_logging as logging
 from chromite.lib import gce
 from chromite.lib import gs
 from chromite.lib import path_util

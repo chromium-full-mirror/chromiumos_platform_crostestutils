@@ -15,6 +15,7 @@ stateful partition.
 from __future__ import print_function
 
 import argparse
+import logging
 import os
 import shutil
 import sys
@@ -27,7 +28,6 @@ sys.path.append(constants.CROS_PLATFORM_ROOT)
 # pylint: disable=wrong-import-position
 from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
-from chromite.lib import cros_logging as logging
 from chromite.lib import dev_server_wrapper
 from chromite.lib import image_lib
 from chromite.lib import osutils

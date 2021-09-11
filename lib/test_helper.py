@@ -8,10 +8,10 @@
 from __future__ import print_function
 
 import glob
+import logging
 import multiprocessing
 
 from chromite.lib import cros_build_lib
-from chromite.lib import cros_logging as logging
 
 
 def _GetTotalMemoryGB():

@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import shutil
 import subprocess
@@ -14,7 +15,6 @@ import tempfile
 
 from chromite.lib import constants as chromite_constants
 from chromite.lib import cros_build_lib
-from chromite.lib import cros_logging as logging
 from crostestutils.au_test_harness import au_worker
 
 
