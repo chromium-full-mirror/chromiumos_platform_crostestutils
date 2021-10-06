@@ -115,8 +115,14 @@ class DevModeTest(object):
               '--image-path=%s' % self.working_image_path, '--start']
     cros_build_lib.run(vm_cmd, cwd=chromite_constants.CHROMITE_BIN_DIR)
 
+    # After the vm is requested ssh can initially take a while.
+    connect_settings = remote_access.CompileSSHConnectSettings(
+        ConnectTimeout=300)
+
     self.device = remote_access.ChromiumOSDevice(
-        remote_access.LOCALHOST, port=self.port, base_dir=self.tmpdir)
+        remote_access.LOCALHOST, port=self.port, base_dir=self.tmpdir,
+        connect_settings=connect_settings)
+
     if not self.device.MountRootfsReadWrite():
       raise TestError('Failed to make rootfs writeable')
 
