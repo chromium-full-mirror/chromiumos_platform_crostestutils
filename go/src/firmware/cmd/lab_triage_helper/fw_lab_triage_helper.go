@@ -21,7 +21,7 @@ const labstationTelemetryCmds = "grep guado_labstation-release /etc/lsb-release;
 	"printf \"\n\"; " +
 	"uptime; " +
 	"printf \"\n\"; " +
-	"mosys eventlog list | tail -n 10; " +
+	"elogtool list | tail -n 10; " +
 	"printf \"\n\"; " +
 	"pgrep --list-full update_engine; " +
 	"printf \"\n\";"
