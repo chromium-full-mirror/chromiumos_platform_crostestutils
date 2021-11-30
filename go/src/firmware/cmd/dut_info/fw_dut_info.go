@@ -39,21 +39,21 @@ func (d *dut) printBugTemplate() {
 	fmt.Println("ChromeOS Version  :", d.crOSVersion)
 	fmt.Println("BIOS Version      :", d.biosVersion)
 	fmt.Println("EC Version        :", d.ecROVersion, "/", d.ecRWVersion)
-	fmt.Println("cr50 Version      :", d.gscVersion, "\n")
+	fmt.Println("cr50 Version      :", d.gscVersion)
+	fmt.Println()
 	fmt.Println("CPU arch          :", d.cpuArch)
 	fmt.Println("CPU speed         :", d.cpuSpeed)
 	fmt.Println("Total Memory      :", d.totalMemory)
 	fmt.Println("Memory Type       :", d.memoryType)
 	if d.mmcModel != "" {
 		fmt.Println("MMC Model         :", d.mmcModel)
-		fmt.Println("MMC Firmware      :", d.mmcFirmwareVersion, "\n")
+		fmt.Println("MMC Firmware      :", d.mmcFirmwareVersion)
 	} else if d.nvmeModel != "" {
 		fmt.Println("NVMe Model        :", d.nvmeModel)
-		fmt.Println("NVMe Firmware     :", d.nvmeFirmwareVersion, "\n")
-	} else {
-		fmt.Println()
+		fmt.Println("NVMe Firmware     :", d.nvmeFirmwareVersion)
 	}
-	fmt.Print("VPD info:\n", d.vpd, "\n")
+	fmt.Println()
+	fmt.Println("VPD info:\n", d.vpd)
 }
 
 // setModel interfaces with a DUT and sets the model field (the DUT's market identifier).
