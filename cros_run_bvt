@@ -50,7 +50,7 @@ fi
 
 DUT="$1"
 OPTIONS=( --board="${FLAGS_board}" )
-TESTS=( suite:bvt-{inline,cq,perbuild,labqual,tast-cq} )
+TESTS=( suite:{labqual,bvt-{inline,cq,perbuild,tast-cq}} )
 
 SUITE_CHECK=0
 if [ ${FLAGS_smoke} -eq ${FLAGS_TRUE} ]; then
