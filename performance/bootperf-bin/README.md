@@ -1,7 +1,7 @@
 # Tools For Measuring Boot Time Performance
 
 Scripts in this directory serve as the wrapper of the tast test
-`platform.BootPerf` for for developers or partners to verify that a device meets
+`platform.BootPerf` for developers or partners to verify that a device meets
 Chrome OS boot time performance requirements. The wrapper is required to make it
 as simple as possible to run the test and display the test results. This
 directory contains the following tools:
