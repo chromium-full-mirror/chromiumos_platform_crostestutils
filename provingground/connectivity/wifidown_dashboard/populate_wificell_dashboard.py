@@ -864,7 +864,7 @@ def populate_dashboard(spreadsheet_name, device_data):
             cell_list[cell_list_index].value = host
             cell_list_index += 1
             cell_list[cell_list_index].value = hv['swarming_data'][
-                'model'] if hv['swarming'] else '--'
+                'model'] if hv['swarming'] and 'swarming_data' in hv else '--'
             cell_list_index += 1
             cell_list[cell_list_index].value = hv['ssh_status'] if hv[
                 'device_status'] == NOT_REACHABLE else hv['device_status']

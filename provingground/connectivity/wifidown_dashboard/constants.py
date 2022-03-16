@@ -6,7 +6,7 @@ import os
 import sys
 
 USERNAME = os.environ['USER']
-SWARMING_PATH = '/usr/local/google/home/%s/chromiumos/chromite/third_party/swarming.client/' % USERNAME
+SWARMING_PATH = '/usr/local/google/home/%s/depot_tools/infra/luci/client/' % USERNAME
 DHCP_PATH = '/usr/local/google/home/%s/chromiumos/chromeos-admin/puppet/modules/lab/files/dhcp-server/dhcpd.conf' % USERNAME
 
 

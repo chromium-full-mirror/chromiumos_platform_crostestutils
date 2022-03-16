@@ -17,7 +17,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
 def _get_wificell_data():
-    cmd = "python2  {}swarming.py query --swarming https://chromeos-swarming.appspot.com 'bots/list?dimensions=pool%3AChromeOSSkylab&dimensions=label-wificell%3ATrue&quarantined=FALSE&limit=1000'".format(
+    cmd = "python3  {}swarming.py query --swarming https://chromeos-swarming.appspot.com 'bots/list?dimensions=pool%3AChromeOSSkylab&dimensions=label-wificell%3ATrue&quarantined=FALSE&limit=1000'".format(
         SWARMING_PATH)
     print("executing %s" % cmd)
     output = json.loads(subprocess.check_output(cmd, shell=True))

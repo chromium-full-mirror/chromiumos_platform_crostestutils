@@ -15,3 +15,15 @@
     get_wificell_data.py
 #   change logging level to DEBUG for more logs
 #   debug_main can be used to write intermediate stages to file
+#  Install luci client using instruction given below
+
+
+
+
+# Instaling LUCI client
+# https://source.chromium.org/chromium/infra/infra/+/main:go/src/go.chromium.org/luci/README.md
+# 1) Install depot_tools
+# 2) Got to deport_tools folder and execute the following commands
+# 3) fetch infra
+# 4) cd infra/go
+# eval `./env.py`
