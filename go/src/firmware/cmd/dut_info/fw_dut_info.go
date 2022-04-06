@@ -5,8 +5,8 @@
 package main
 
 import (
-	"firmware/internal/pkg/dutio"
 	"fmt"
+	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
 	"log"
 	"os"
 	"strings"

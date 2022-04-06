@@ -6,9 +6,9 @@ package main
 
 import (
 	"encoding/json"
-	"firmware/internal/pkg/dutio"
 	"flag"
 	"fmt"
+	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
 	"log"
 	"os"
 	"os/exec"
