@@ -149,7 +149,7 @@ function resolve_hostname {
 
   # Add suffix, keeping any existing '.cros' suffix
   if [ "${SUFFIX_TO_ADD}" !=  "" ]; then
-    if [ "${RESOLVED_NAME::-5}" == ".cros" ]; then
+    if [ "${RESOLVED_NAME: -5}" == ".cros" ]; then
       local RESOLVED_NAME="${RESOLVED_NAME:0:-5}${SUFFIX_TO_ADD}.cros"
     else
       local RESOLVED_NAME="${RESOLVED_NAME}${SUFFIX_TO_ADD}"
