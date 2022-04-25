@@ -30,8 +30,7 @@ const warningMessage = `This utility assumes many things, like that you have the
 environment in which it is run and that you have cros in your DNS search path.
 This is a convenience utility for firmware qual test environment health triage.
 Feel free and encouraged to extend and enhance it: it should generally
-complement monitoring and alerting efforts and any other longer term efforts.
-`
+complement monitoring and alerting efforts and any other longer term efforts.`
 
 const autotestGetBranchesGerritAPIEndpoint = "https://chromium-review.googlesource.com/a/projects/chromiumos%2Fthird_party%2Fautotest/branches/"
 const autotestGetCommitGerritAPIEndpoint = "https://chromium-review.googlesource.com/a/projects/chromiumos%2Fthird_party%2Fautotest/commits/"
