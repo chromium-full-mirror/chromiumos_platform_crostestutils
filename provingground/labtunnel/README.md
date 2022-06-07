@@ -135,6 +135,47 @@ Closing tmux session 'labtunnel_tmux_ssh_1646703939'...
 Killing child processes...
 ```
 
+### btpeers
+```text
+$ labtunnel btpeers chromeos1-dev-host6
+Creating SSH tunnel BTPEER1-CHAMELEOND: localhost:9992 -> chromeos1-dev-host6-btpeer1 -> localhost:9992...
+Successfully created tunnels
+ BTPEER1-CHAMELEOND: localhost:9992 -> chromeos1-dev-host6-btpeer1 -> localhost:9992
+
+To shut down tunnels and sub-processes, exit this process  (pid=2229798) with SIGHUP, SIGINT, or SIGQUIT
+^C
+Closing labtunnel...
+Killing child processes...
+```
+
+```text
+$ labtunnel --btpeer-count 2 btpeers chromeos1-dev-host6
+Creating SSH tunnel BTPEER1-CHAMELEOND: localhost:9992 -> chromeos1-dev-host6-btpeer1 -> localhost:9992...
+Creating SSH tunnel BTPEER2-CHAMELEOND: localhost:9993 -> chromeos1-dev-host6-btpeer2 -> localhost:9992...
+Successfully created tunnels
+ BTPEER1-CHAMELEOND: localhost:9992 -> chromeos1-dev-host6-btpeer1 -> localhost:9992
+ BTPEER2-CHAMELEOND: localhost:9993 -> chromeos1-dev-host6-btpeer2 -> localhost:9992
+
+To shut down tunnels and sub-processes, exit this process  (pid=2167706) with SIGHUP, SIGINT, or SIGQUIT
+^C
+Closing labtunnel...
+Killing child processes...
+```
+
+```text
+ $ labtunnel --btpeer-count 2 --chameleond-port 5000 btpeers chromeos1-dev-host6
+Creating SSH tunnel BTPEER1-CHAMELEOND: localhost:5000 -> chromeos1-dev-host6-btpeer1 -> localhost:5000...
+Creating SSH tunnel BTPEER2-CHAMELEOND: localhost:5001 -> chromeos1-dev-host6-btpeer2 -> localhost:5000...
+Successfully created tunnels
+ BTPEER1-CHAMELEOND: localhost:5000 -> chromeos1-dev-host6-btpeer1 -> localhost:5000
+ BTPEER2-CHAMELEOND: localhost:5001 -> chromeos1-dev-host6-btpeer2 -> localhost:5000
+
+To shut down tunnels and sub-processes, exit this process  (pid=2230142) with SIGHUP, SIGINT, or SIGQUIT
+^C
+Closing labtunnel...
+Killing child processes...
+```
+
 
 ## Debugging
 The script is designed to clean itself up if something goes wrong in most cases,

@@ -40,6 +40,8 @@ SSH_OPTIONS=(
   "-o UserKnownHostsFile=/dev/null"
   "-o LogLevel=ERROR"
 )
+BTPEER_COUNT=1
+CHAMELEOND_PORT=9992
 while [[ $# -gt 2 ]]; do
   case $1 in
     --help|help|-h)
@@ -103,6 +105,14 @@ while [[ $# -gt 2 ]]; do
       IFS=' ' read -r -a SSH_OPTIONS <<< "$2"
       shift 2
       ;;
+    --btpeer-count)
+      BTPEER_COUNT="$2"
+      shift 2
+      ;;
+    --chameleond-port)
+      CHAMELEOND_PORT="$2"
+      shift 2
+      ;;
     *)
       echo "Error: Invalid option '$1'"
       print_help
@@ -134,6 +144,14 @@ Error: Required xtigervncviewer not found
 
 You can install TigerVNC on gLinux with 'sudo apt install tigervnc-viewer'
 END
+  exit 1
+fi
+
+RE_POSITIVE_INT='^[0-9]+$'
+if ! [[ "${CHAMELEOND_PORT}" =~ ${RE_POSITIVE_INT} ]] \
+|| [ "${CHAMELEOND_PORT}" -le 0 ]; then
+  echo "Error: --chameleond-port value must be a non-zero positive integer"
+  print_help
   exit 1
 fi
 
@@ -336,6 +354,16 @@ case ${TUNNEL_TYPE} in
     else
       echo "DUT VNC available at localhost:5900"
     fi
+    ;;
+  btpeers)
+    # Tunnel to each bluetooth peer.
+    for ((i = 1; i <= "${BTPEER_COUNT}"; i++ )); do
+      BT_HOST="${HOST_DUT}-btpeer${i}"
+      LOCAL_BT_PORT=$(("${CHAMELEOND_PORT}" + "${i}" - 1))
+      make_tunnel "BTPEER${i}-CHAMELEOND" "localhost" "${LOCAL_BT_PORT}" \
+      "${BT_HOST}" "${CHAMELEOND_PORT}"
+    done
+    echo -e "${TUNNEL_SUMMARY}"
     ;;
   *)
     echo "Error: Invalid tunnel type '${TUNNEL_TYPE}'"

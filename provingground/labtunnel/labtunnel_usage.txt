@@ -64,6 +64,25 @@ Usage: labtunnel [options] <tunnel_operation> <dut_host>
                         VNC server with TigerVNC and then connect to
                         localhost:5900 with your preferred VNC client.
 
+    btpeers         Opens ssh tunnels to Chameleond running on bluetooth peers.
+
+                      - Specify the number of bluetooth peers to connect to
+                        with the --btpeer-count option.
+
+                      - Specify the remote Chameleond port with the
+                        --chameleond-port option. The local forwarded ports will
+                        also reflect this same port with an offset for the
+                        btpeer number.
+
+                      - This does not create a tunnel for the dut, it just
+                        uses the provided dut hostname to determine the
+                        hostnames of the btpeers. The formula for the btpeer
+                        hostname is "<dut>-btpeer<n>", where "<dut>" is the dut
+                        hostname (as used in the dut tunnel_operation) and "<n>"
+                        is the Nth bluetooth peer, starting at 1. If you need
+                        tunnel to the dut, it's suggested to just run another
+                        labtunnel process using the dut tunnel_operation.
+
 
   Supported options:
    --help|help|-h             Prints this help text and exists.
@@ -109,3 +128,10 @@ Usage: labtunnel [options] <tunnel_operation> <dut_host>
 
    --ssh-options <options>    Sets all the CLI options to <options> used for all
                               ssh commands.
+
+   --btpeer-count <n>         Specifies the number of bluetooth peers to tunnel
+                              to for the btpeers tunnel_operation. Must be a
+                              positive integer. Defaults to 1.
+
+   --chameleond-port <port>   Specifies the remote Chameleond port to tunnel to
+                              for btpeers. Defaults to 9992.
