@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>ChromeOS Launch Bugs go/launchbugs </title>
+    </head>
+    <body >
+      <script>
+            // Read the parameters passed to the url
+            function GetURLParameter(sParam) {
+                var sPageURL = window.location.search.substring(1);
+                var sURLVariables = sPageURL.split('&');
+                for (var i = 0; i < sURLVariables.length; i++) {
+                    var sParameterName = sURLVariables[i].split('=');
+                    if (sParameterName[0] == sParam) {
+                      return sParameterName[1];
+                    }
+                }
+            }
+
+            //Add milestone and TE to crbug url and redirect to it
+            function UpdateUrlsWithMilestone(milestone, te, s, c) {
+              var src = "https://bugs.chromium.org/p/chromium/issues/list?sort=-component%20te&groupby=&colspec=ID%20Pri%20Component%20Summary%20TL%20PM%20TE%20ChromeOS-Test%20stable.M-Target%20Opened%20ATFw&can=1&q=stable.M-Target=<milestone>%20<TE>%20<COMPONENT>%20<status>%20OS%3DChrome%20-OS%3AMac%2CIOS%2Clinux%2CAndroid%2CWindows%2CFuchsia%2CAll%20-Status%3ADuplicate%2CWontFix%2CArchived%20has:ChromeOS-Leadership-Full%20OR%20stable-Full.M-Target=<milestone>%20<TE>%20<COMPONENT>%20<status>%20OS%3DChrome%20-OS%3AMac%2CIOS%2Clinux%2CAndroid%2CWindows%2CFuchsia%2CAll%20-Status%3ADuplicate%2CWontFix%2CArchived%20has:ChromeOS-Leadership-Full"
+              src = src.replace(/<milestone>/g, milestone)
+              if (!te) {
+                console.log('No te')
+                src = src.replace(/<TE>/g, "")
+              }
+              else {
+                console.log('replace te')
+                src = src.replace(/<TE>/g, "TE:"+te)
+              }
+              if (!s) {
+                console.log('No status')
+                src = src.replace(/<status>/g, "")
+              }
+              else {
+                console.log('replace status')
+                src = src.replace(/<status>/g, "ChromeOS-Test:"+s)
+              }
+              if (!c) {
+                console.log('No component')
+                src = src.replace(/<COMPONENT>/g, "")
+              }
+              else {
+                console.log('replace component')
+                src = src.replace(/<COMPONENT>/g, "component:"+c)
+              }
+              window.location.replace(src);
+            }
+            var m = GetURLParameter('m')
+            var te = GetURLParameter('te')
+            var s = GetURLParameter('status')
+            var c = GetURLParameter('c')
+            if (te == "new") {
+              console.log('te = new url')
+              window.location.replace('https://bugs.chromium.org/p/chromium/issues/list?sort=-chromeos-test&colspec=ID%20Component%20Summary%20TL%20PM%20TE%20ChromeOS-Test%20stable.m-target%20ChromeOS-Test-approver&num=100&q=Type%3DFLT-Launch%20OS%3DChrome%20-OS%3DIOS%2CAndroid%2CLinux%2CWindows%2CMac%2CFuchsia%20-ChromeOS-Test%3DAPPROVED%20has:ChromeOS-Leadership-Full%20-has:TE&can=2')
+             }
+            else if (!m) {
+              console.log('Error: No milestone supplied.')
+              window.location.replace('https://bugs.chromium.org/p/chromium/issues/list?sort=-chromeos-test&colspec=ID%20Component%20Summary%20TL%20PM%20TE%20ChromeOS-Test%20stable.m-target%20ChromeOS-Test-approver&num=100&q=Type%3DFLT-Launch%20OS%3DChrome%20-OS%3DIOS%2CAndroid%2CLinux%2CWindows%2CMac%2CFuchsia%20-ChromeOS-Test%3DAPPROVED%20has:ChromeOS-Leadership-Full&can=2')
+            }
+            else {
+              UpdateUrlsWithMilestone(m, te, s, c)
+            }
+        </script>
+    </body>
+</html>
