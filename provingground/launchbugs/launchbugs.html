@@ -36,7 +36,7 @@
               }
               else {
                 console.log('replace status')
-                src = src.replace(/<status>/g, "ChromeOS-Test:"+s)
+                src = src.replace(/<status>/g, "Status:"+s)
               }
               if (!c) {
                 console.log('No component')
@@ -52,6 +52,15 @@
             var te = GetURLParameter('te')
             var s = GetURLParameter('status')
             var c = GetURLParameter('c')
+            //Add use of team variables
+            var team = GetURLParameter('team')
+            if (team && team.toLowerCase() == "corex"){
+                if (!te)
+                    te = 'dhaddock,kyleshima,hyungtaekim,awendy'
+                else if(te != "new"){
+                    te = te.concat(',dhaddock,kyleshima,hyungtaekim,awendy')
+                }
+            }
             if (te == "new") {
               console.log('te = new url')
               window.location.replace('https://bugs.chromium.org/p/chromium/issues/list?sort=-chromeos-test&colspec=ID%20Component%20Summary%20TL%20PM%20TE%20ChromeOS-Test%20stable.m-target%20ChromeOS-Test-approver&num=100&q=Type%3DFLT-Launch%20OS%3DChrome%20-OS%3DIOS%2CAndroid%2CLinux%2CWindows%2CMac%2CFuchsia%20-ChromeOS-Test%3DAPPROVED%20has:ChromeOS-Leadership-Full%20-has:TE&can=2')
