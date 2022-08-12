@@ -17,10 +17,10 @@
                     }
                 }
             }
-
+            var base_url = 'https://bugs.chromium.org/p/chromium/issues/list?sort=-component te&groupby=&colspec=ID Pri Component Summary TL PM TE ChromeOS-Test stable.M-Target Opened ATFw ChromeOS-Test-approver'
             //Add milestone and TE to crbug url and redirect to it
             function UpdateUrlsWithMilestone(milestone, te, s, c) {
-              var src = "https://bugs.chromium.org/p/chromium/issues/list?sort=-component%20te&groupby=&colspec=ID%20Pri%20Component%20Summary%20TL%20PM%20TE%20ChromeOS-Test%20stable.M-Target%20Opened%20ATFw&can=1&q=stable.M-Target=<milestone>%20<TE>%20<COMPONENT>%20<status>%20OS%3DChrome%20-OS%3AMac%2CIOS%2Clinux%2CAndroid%2CWindows%2CFuchsia%2CAll%20-Status%3ADuplicate%2CWontFix%2CArchived%20has:ChromeOS-Leadership-Full%20OR%20stable-Full.M-Target=<milestone>%20<TE>%20<COMPONENT>%20<status>%20OS%3DChrome%20-OS%3AMac%2CIOS%2Clinux%2CAndroid%2CWindows%2CFuchsia%2CAll%20-Status%3ADuplicate%2CWontFix%2CArchived%20has:ChromeOS-Leadership-Full"
+              var src = base_url.concat('&q=(stable.M-Target=<milestone> OR stable-Full.M-Target=<milestone> OR stable-Exp.M-Target=<milestone>) <TE> <COMPONENT> <status>').concat(' OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -Status:Duplicate,WontFix,Archived has:ChromeOS-Leadership-Full&can=1')
               src = src.replace(/<milestone>/g, milestone)
               if (!te) {
                 console.log('No te')
@@ -63,11 +63,11 @@
             }
             if (te == "new") {
               console.log('te = new url')
-              window.location.replace('https://bugs.chromium.org/p/chromium/issues/list?sort=-chromeos-test&colspec=ID%20Component%20Summary%20TL%20PM%20TE%20ChromeOS-Test%20stable.m-target%20ChromeOS-Test-approver&num=100&q=Type%3DFLT-Launch%20OS%3DChrome%20-OS%3DIOS%2CAndroid%2CLinux%2CWindows%2CMac%2CFuchsia%20-ChromeOS-Test%3DAPPROVED%20has:ChromeOS-Leadership-Full%20-has:TE&can=2')
+              window.location.replace(base_url.concat('&num=100&q=Type=FLT-Launch OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -ChromeOS-Test=APPROVED has:ChromeOS-Leadership-Full -has:TE&can=2'))
              }
             else if (!m) {
               console.log('Error: No milestone supplied.')
-              window.location.replace('https://bugs.chromium.org/p/chromium/issues/list?sort=-chromeos-test&colspec=ID%20Component%20Summary%20TL%20PM%20TE%20ChromeOS-Test%20stable.m-target%20ChromeOS-Test-approver&num=100&q=Type%3DFLT-Launch%20OS%3DChrome%20-OS%3DIOS%2CAndroid%2CLinux%2CWindows%2CMac%2CFuchsia%20-ChromeOS-Test%3DAPPROVED%20has:ChromeOS-Leadership-Full&can=2')
+              window.location.replace(base_url.concat('&num=100&q=Type=FLT-Launch OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -ChromeOS-Test=APPROVED has:ChromeOS-Leadership-Full&can=2'))
             }
             else {
               UpdateUrlsWithMilestone(m, te, s, c)
