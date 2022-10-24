@@ -17,60 +17,44 @@
                     }
                 }
             }
-            var base_url = 'https://bugs.chromium.org/p/chromium/issues/list?sort=-component te&groupby=&colspec=ID Pri Component Summary TL PM TE ChromeOS-Test stable.M-Target Opened ATFw ChromeOS-Test-approver'
-            //Add milestone and TE to crbug url and redirect to it
-            function UpdateUrlsWithMilestone(milestone, te, s, c) {
-              var src = base_url.concat('&q=(stable.M-Target=<milestone> OR stable-Full.M-Target=<milestone> OR stable-Exp.M-Target=<milestone>) <TE> <COMPONENT> <status>').concat(' OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -Status:Duplicate,WontFix,Archived has:ChromeOS-Leadership-Full&can=1')
+            var base_url = 'https://launch.corp.google.com/launches?'
+            //Add milestone and TE to launch url and redirect to it
+            function UpdateUrlsWithMilestone(milestone, te, team) {
+              var src = base_url.concat('&q=calendarId:2197 status:current "Stable Target Milestone":"<milestone>" <TE>')
               src = src.replace(/<milestone>/g, milestone)
-              if (!te) {
-                console.log('No te')
-                src = src.replace(/<TE>/g, "")
+              if (!team){
+                if (!te) {
+                  console.log('No te')
+                  src = src.replace(/<TE>/g, "")
+                }
+                else {
+                  console.log('Replace te')
+                  src = src.replace(/<TE>/g, '"te":"'+te+'"')
+                }
               }
-              else {
-                console.log('replace te')
-                src = src.replace(/<TE>/g, "TE:"+te)
-              }
-              if (!s) {
-                console.log('No status')
-                src = src.replace(/<status>/g, "")
-              }
-              else {
-                console.log('replace status')
-                src = src.replace(/<status>/g, "Status:"+s)
-              }
-              if (!c) {
-                console.log('No component')
-                src = src.replace(/<COMPONENT>/g, "")
-              }
-              else {
-                console.log('replace component')
-                src = src.replace(/<COMPONENT>/g, "component:"+c)
+              else{ 
+                console.log('Team found, overrides TE')
+                src = src.replace(/<TE>/g, team)
               }
               window.location.replace(src);
             }
             var m = GetURLParameter('m')
             var te = GetURLParameter('te')
-            var s = GetURLParameter('status')
-            var c = GetURLParameter('c')
             //Add use of team variables
             var team = GetURLParameter('team')
             if (team && team.toLowerCase() == "corex"){
-                if (!te)
-                    te = 'dhaddock,kyleshima,hyungtaekim,awendy'
-                else if(te != "new"){
-                    te = te.concat(',dhaddock,kyleshima,hyungtaekim,awendy')
-                }
+                team = '\"te\":(\"dhaddock\" OR \"kyleshima\" OR \"hyungtaekim\" OR \"awendy\")'
             }
             if (te == "new") {
               console.log('te = new url')
-              window.location.replace(base_url.concat('&num=100&q=Type=FLT-Launch OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -ChromeOS-Test=APPROVED has:ChromeOS-Leadership-Full -has:TE&can=2'))
-             }
+              window.location.replace(base_url.concat('&q=calendarId:2197 status:current te:NULL'))
+            }
             else if (!m) {
               console.log('Error: No milestone supplied.')
-              window.location.replace(base_url.concat('&num=100&q=Type=FLT-Launch OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -ChromeOS-Test=APPROVED has:ChromeOS-Leadership-Full&can=2'))
+              window.location.replace(base_url.concat('&q=calendarId:2197 status:current'))
             }
             else {
-              UpdateUrlsWithMilestone(m, te, s, c)
+              UpdateUrlsWithMilestone(m, te, team)
             }
         </script>
     </body>
