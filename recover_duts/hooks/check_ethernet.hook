@@ -111,20 +111,20 @@ ping_controlling_server() {
   local default_gateway
   default_gateway="$(get_default_gateway)" || default_gateway=
   if [ -n "${default_gateway}" ]; then
-    do_ping ${default_gateway} && return 0
+    do_ping "${default_gateway}" && return 0
   fi
 
   local ssh_client
   ssh_client="$(find_ssh_client)" || ssh_client=
   if [ -n "${ssh_client}" ]; then
-    do_ping ${ssh_client} && return 0
+    do_ping "${ssh_client}" && return 0
   fi
 
   # Last attempt: any recently seen neighbor
   local neighbor
   neighbor="$(find_ethernet_neighbor)" || neighbor=
   if [ -n "${neighbor}" ]; then
-    do_ping ${neighbor} && return 0
+    do_ping "${neighbor}" && return 0
   fi
   return 1
 }
@@ -137,7 +137,7 @@ reload_ethernet_drivers() {
     reload_network_device "${eth}"
     ret=0
   done
-  return ${ret}
+  return "${ret}"
 }
 
 toggle_usb_ports() {
@@ -164,7 +164,7 @@ toggle_usb_ports() {
       sleep 1
     fi
   done
-  return ${ret}
+  return "${ret}"
 }
 
 # If there are no devices available, rescan all hubs.
@@ -275,7 +275,7 @@ pause_check_ethernet() {
     return 1
   fi
 
-  if [ ${paused_time} -gt $((30*60)) ] ; then
+  if [ "${paused_time}" -gt $((30*60)) ] ; then
     critical_msg "Pause request exceeded 30 minutes. Checking lab network link."
     force_pause_lock
     return 1
