@@ -1,77 +1,72 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>ChromeOS Launch Bugs go/launchbugsold </title>
-    </head>
-    <body >
-      <script>
-            // Read the parameters passed to the url
-            function GetURLParameter(sParam) {
-                var sPageURL = window.location.search.substring(1);
-                var sURLVariables = sPageURL.split('&');
-                for (var i = 0; i < sURLVariables.length; i++) {
-                    var sParameterName = sURLVariables[i].split('=');
-                    if (sParameterName[0] == sParam) {
-                      return sParameterName[1];
-                    }
-                }
-            }
-            var base_url = 'https://bugs.chromium.org/p/chromium/issues/list?sort=-component te&groupby=&colspec=ID Pri Component Summary TL PM TE ChromeOS-Test stable.M-Target Opened ATFw ChromeOS-Test-approver'
-            //Add milestone and TE to crbug url and redirect to it
-            function UpdateUrlsWithMilestone(milestone, te, s, c) {
-              var src = base_url.concat('&q=(stable.M-Target=<milestone> OR stable-Full.M-Target=<milestone> OR stable-Exp.M-Target=<milestone>) <TE> <COMPONENT> <status>').concat(' OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -Status:Duplicate,WontFix has:ChromeOS-Leadership-Full&can=1')
-              src = src.replace(/<milestone>/g, milestone)
-              if (!te) {
-                console.log('No te')
-                src = src.replace(/<TE>/g, "")
-              }
-              else {
-                console.log('replace te')
-                src = src.replace(/<TE>/g, "TE:"+te)
-              }
-              if (!s) {
-                console.log('No status')
-                src = src.replace(/<status>/g, "")
-              }
-              else {
-                console.log('replace status')
-                src = src.replace(/<status>/g, "Status:"+s)
-              }
-              if (!c) {
-                console.log('No component')
-                src = src.replace(/<COMPONENT>/g, "")
-              }
-              else {
-                console.log('replace component')
-                src = src.replace(/<COMPONENT>/g, "component:"+c)
-              }
-              window.location.replace(src);
-            }
-            var m = GetURLParameter('m')
-            var te = GetURLParameter('te')
-            var s = GetURLParameter('status')
-            var c = GetURLParameter('c')
-            //Add use of team variables
-            var team = GetURLParameter('team')
-            if (team && team.toLowerCase() == "corex"){
-                if (!te)
-                    te = 'dhaddock,kyleshima,hyungtaekim,awendy'
-                else if(te != "new"){
-                    te = te.concat(',dhaddock,kyleshima,hyungtaekim,awendy')
-                }
-            }
-            if (te == "new") {
-              console.log('te = new url')
-              window.location.replace(base_url.concat('&num=100&q=Type=FLT-Launch OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -ChromeOS-Test=APPROVED has:ChromeOS-Leadership-Full -has:TE&can=2'))
-             }
-            else if (!m) {
-              console.log('Error: No milestone supplied.')
-              window.location.replace(base_url.concat('&num=100&q=Type=FLT-Launch OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -ChromeOS-Test=APPROVED has:ChromeOS-Leadership-Full&can=2'))
-            }
-            else {
-              UpdateUrlsWithMilestone(m, te, s, c)
-            }
-        </script>
-    </body>
+
+<head>
+  <meta charset="utf-8">
+  <title>ChromeOS Launch Bugs go/launchbugsold </title>
+</head>
+
+<body>
+  <script type = "text/javascript" src="js/getParameters.js"></script>
+  <script>
+    var base_url = 'https://bugs.chromium.org/p/chromium/issues/list?sort=-component te&groupby=&colspec=ID Pri Component Summary TL PM TE ChromeOS-Test stable.M-Target Opened ATFw ChromeOS-Test-approver'
+    // Add milestone, TE, status, and component to crbug url and redirect to it
+    function UpdateUrlsWithMilestone(m, team, te, s, c) {
+      var src = base_url.concat('&q=<milestone> <TE> <component> <status>').concat(' OS=Chrome -OS:Mac,IOS,linux,Android,Windows,Fuchsia,All -Status:Duplicate,WontFix has:ChromeOS-Leadership-Full&can=1')
+      // Milestone
+      if (!m) {
+        console.log('No Milestone provided')
+        m = ''
+      }
+      else {
+        console.log('Replace Milestone')
+        m = '(stable.M-Target=' + m + ' OR stable-Full.M-Target=' + m + ' OR stable-Exp.M-Target=' + m + ')'
+      }
+      src = src.replace(/<milestone>/g, m)
+      // Team logic overrides TE
+      if (team && team.toLowerCase() == "corex") {
+        console.log('Team found, overrides TE')
+        te = 'dhaddock,kyleshima,hyungtaekim,awendy'
+      }
+      // TE
+      if (!te) {
+        console.log('No TE')
+        te =  ''
+      }
+      else if (te == 'new') {
+        console.log('TE = new')
+        te = '-has:TE'
+      }
+      else {
+        te = 'TE:' + te
+      }
+      src = src.replace(/<TE>/g, te)
+      // Status
+      if (!s) {
+        console.log('No status')
+        s =  ''
+      }
+      else {
+        s = 'Status:' + s
+      }
+      src = src.replace(/<status>/g, s)
+      // Component
+      if (!c) {
+        console.log('No component')
+        c = ''
+      }
+      else {
+        c = 'component:' + c
+      }
+      src = src.replace(/<component>/g, c)
+      window.location.replace(src);
+    }
+    var m = GetURLParameter('m')
+    var team = GetURLParameter('team')
+    var te = GetURLParameter('te')
+    var s = GetURLParameter('status')
+    var c = GetURLParameter('c')
+    UpdateUrlsWithMilestone(m, team, te, s, c)
+  </script>
+</body>
 </html>
