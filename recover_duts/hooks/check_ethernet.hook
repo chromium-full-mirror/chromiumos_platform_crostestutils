@@ -27,6 +27,48 @@ info_msg() {
   echo "$(date --rfc-3339=seconds)  $*" >&2
 }
 
+mist_device_is_present() {
+
+  for class_path in /sys/bus/usb/devices/*/bInterfaceClass  ; do
+    # no USB devices? Unlikely but possible
+    ! [ -e "${class_path}" ] && return 1
+
+    # 08 = Mass Storage
+    if [ "$(cat "${class_path}")" != "08" ] ; then
+        continue
+    fi
+    usbdev="$(dirname "${usbdev}")"
+
+    # NOTE: `..` is resolved on the directory the `${usbdev}` symlink
+    # is pointing to, not the value of usbdev.
+    pid_path="${usbdev}/../idProduct"
+    vid_path="${usbdev}/../idVendor"
+
+    id="$(cat "${vid_path}"):$(cat "${pid_path}")"
+
+    case "${id}" in
+    # See ~/chromiumos/src/platform2/mist/51-mist.rules for list of devices.
+    # Note the idProduct values are all one less than the normal product ID.
+    # Samsung branded RTL8153 (04e8:a100) dongle is ommitted because we only
+    # care about the few ethernet dongles used for moblab/satlab and
+    # ChromeOS test lab.
+    0bda:8152 | 0bda:8151 | 13b1:0040)
+      if [ -e /usr/bin/mist ] ; then
+        # if mist binary is present, let mist handle this
+        return 0
+      else
+        # bounce device:  most likely it will come back in vendor mode.
+	# Ethernet NIC init and DHCP should complete in under 10 seconds.
+	echo 0 >  "${usbdev}/authorized" ; sleep 1
+	echo 1 >  "${usbdev}/authorized" ; sleep 10
+        return 1
+      fi;;
+    esac
+  done
+
+  return 1
+}
+
 # Returns the default gateway.
 get_default_gateway() {
   local ip_route
@@ -295,6 +337,12 @@ main() {
   fi
 
   if pause_check_ethernet; then
+    return 0
+  fi
+
+  # mist handles flipping USB devices from "Mass Storage" mode back to "vendor mode".
+  # Don't interfere with mist's operation. Come back later to check again.
+  if mist_device_is_present; then
     return 0
   fi
 
