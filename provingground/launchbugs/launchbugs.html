@@ -37,6 +37,8 @@
         te = ' te:NULL'
       }
       else {
+        // TODO: Remove this replacement once b/237097115 is fixed
+        te = te.replace(/%2C/g, '" OR "')
         // Verify if multiple TEs provided
         te = ' "te":("' +te.replace(/,/g, '" OR "')+ '")'
       }
@@ -47,6 +49,8 @@
         approver = ''
       }
       else {
+        // TODO: Remove this replacement once b/237097115 is fixed
+        approver = approver.replace(/%2C/g, '" OR "')
         // Verify if multiple Approvers provided
         approver =  ' "EngProd owners":("' +approver.replace(/,/g, '" OR "') + '")'
       }
