@@ -1,8 +1,10 @@
 module go.chromium.org/fw-engprod-tools
 
-go 1.14
+go 1.18
 
 require (
-	golang.org/x/crypto v0.0.0-20220126234351-aa10faf2a1f8
-	golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 // indirect
+	golang.org/x/crypto v0.1.0
+	golang.org/x/exp v0.0.0-20230131160201-f062dba9d201
 )
+
+require golang.org/x/sys v0.1.0 // indirect
