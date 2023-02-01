@@ -12,7 +12,7 @@ SCRIPTS_DIR="${SRC_DIR}/scripts"
 
 . "${SCRIPTS_DIR}/lib/shflags/shflags" || die "Couldn't find shflags"
 
-DEFAULT_PRIVATE_KEY="${SCRIPTS_DIR}/mod_for_test_scripts/ssh_keys/testing_rsa"
+DEFAULT_PRIVATE_KEY="${SRC_DIR}/ssh_keys/testing_rsa"
 
 # Flags
 DEFINE_string from "" "Directory with autotest tarball"
