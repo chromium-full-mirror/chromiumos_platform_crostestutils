@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -24,8 +25,12 @@ const (
 	helpUsage               = "Usage: fwget [--board <board> --firmware <ec|ap> --version <latest|stable|release number] path"
 	exampleUsage            = "fwget --board=galtic --firmware=ec --version=stable /tmp/your_image.bin "
 	exampleUsageDescription = "Example usage: download the latest stable EC image for galtic boards to /tmp/your_image.bin"
+	exampleReleaseString    = "R89-13606.459.0"
 
 	firmwareTarName = "firmware_from_source.tar.bz2"
+
+	// Example: R89-13606.459.0
+	releaseStringRegexPattern = `(R\d+)-(\d+)\.(\d+)\.(\d+)`
 )
 
 // A mapping of boards to their respective baseboards. Necessary to determine
@@ -39,10 +44,28 @@ var requiredFlags = []string{"board", "firmware"}
 var supportedFirmwareTypes = []string{"ec", "ap"}
 var versionAliases = []string{"latest", "stable"}
 
+var releaseStringRegex = regexp.MustCompile(releaseStringRegexPattern)
+
 type image struct {
 	board    string
 	firmware string
 	version  string
+}
+
+type release struct {
+	milestone    string
+	majorVersion string
+	minorVersion string
+	patchNumber  string
+}
+
+func (r release) String() string {
+	return fmt.Sprintf("%s-%s.%s.%s",
+		r.milestone,
+		r.majorVersion,
+		r.minorVersion,
+		r.patchNumber,
+	)
 }
 
 func main() {
@@ -55,7 +78,7 @@ func main() {
 	// help := flags.Bool("help", false, "display the help message")
 	board := flags.String("board", "", "the board to fetch the firmware image for")
 	firmware := flags.String("firmware", "", "the firmware type: \"ec\" or \"ap\"")
-	version := flags.String("version", "stable", "the firmware image version: a version number, \"latest\" or \"stable\"")
+	version := flags.String("version", "stable", fmt.Sprintf("the firmware image version: \"latest\", \"stable\" or a specific release like %s", exampleReleaseString))
 
 	flags.Parse(os.Args[1:])
 
@@ -149,4 +172,19 @@ func validateRequiredFlagsArePresent(flags flag.FlagSet) error {
 		return fmt.Errorf("missing the following required flags: %v", missingFlags)
 	}
 	return nil
+}
+
+// parseReleaseString builds a release struct from a string containing a
+// release string.
+func parseReleaseString(releaseString string) (*release, error) {
+	match := releaseStringRegex.FindStringSubmatch(releaseString)
+	if len(match) != 5 {
+		return nil, fmt.Errorf("unable to parse release string \"%s\". Expected something like the following example: \"%s\"", releaseString, exampleReleaseString)
+	}
+	return &release{
+		milestone:    match[1],
+		majorVersion: match[2],
+		minorVersion: match[3],
+		patchNumber:  match[4],
+	}, nil
 }

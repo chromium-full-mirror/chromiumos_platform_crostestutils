@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -114,6 +115,60 @@ func TestValidateRequiredFlagsArePresent(t *testing.T) {
 			}
 			if err != nil && tt.isValid {
 				t.Errorf("Expected %+v to be valid but returned an error: %s", tt.img, err)
+			}
+		})
+	}
+}
+
+// TestParseReleaseString tests that a release string like R89-13606.459.0
+// can be properly identified and marshalled into a release struct.
+func TestParseReleaseString(t *testing.T) {
+	testCases := []struct {
+		releaseString string
+		release       *release
+	}{
+		{
+			"R89-13606.459.0",
+			&release{
+				milestone:    "R89",
+				majorVersion: "13606",
+				minorVersion: "459",
+				patchNumber:  "0",
+			},
+		},
+		{
+			"someText/R12-123.569/before-the-string/R89-13606.459.0/someTextAfterwards",
+			&release{
+				milestone:    "R89",
+				majorVersion: "13606",
+				minorVersion: "459",
+				patchNumber:  "0",
+			},
+		},
+		{
+			"X89-13606.459.0",
+			nil,
+		},
+		{
+			"R89-ABCD.459.0",
+			nil,
+		},
+
+		{
+			"R89-ABCD.459",
+			nil,
+		},
+	}
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.releaseString, func(t *testing.T) {
+			t.Parallel()
+			release, _ := parseReleaseString(tt.releaseString)
+			if !reflect.DeepEqual(release, tt.release) {
+				t.Errorf(
+					"Expected release %+v\n but got %+v\n",
+					tt.release,
+					release)
 			}
 		})
 	}
