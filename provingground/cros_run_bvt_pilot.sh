@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# TODO(b:269503867): De-shell this utility.
 # This script requires that you run build_packages first.
 
 # Special because this can only run inside the chroot.
@@ -31,6 +32,9 @@ DEFINE_string servo_host "" \
   "When running servo tests, specifies the host running servod"
 DEFINE_string servo_port "" \
   "When running servo tests, specifies the port for contacting servod"
+# Free-form string to check against servod's reported servo type.
+DEFINE_string servo_type "" \
+  "When running servo tests, specifies the servo type"
 
 # Parse command line; die on errors
 FLAGS_HELP="usage: $(basename "$0") [flags] <hostname-or-ipaddr>"
@@ -42,6 +46,11 @@ if [ -z "${FLAGS_board}" ]; then
   die "--board required"
 fi
 
+DEBUG=
+if [ "${FLAGS_debug}" -eq "${FLAGS_TRUE}" ]; then
+  DEBUG="echo"
+fi
+
 if [ $# -ne 1 ]; then
   die "Must specify exactly one DUT"
 fi
@@ -49,6 +58,7 @@ fi
 DUT="$1"
 OPTIONS=( --board="${FLAGS_board}" )
 TESTS=( suite:{labqual,bvt-{inline,cq,perbuild,tast-cq}} )
+GET_SERVO_TYPE_CMD=( "dut-control" "--value_only" )
 
 SUITE_CHECK=0
 if [ "${FLAGS_smoke}" -eq "${FLAGS_TRUE}" ]; then
@@ -64,6 +74,9 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
   TESTS=( suite:labqual)
 
   # Handle Servo options for the lab qualification tests.
+  if [ -z "${FLAGS_servo_type}" ]; then
+    die "servo type must be specified for labquals to prevent false positives"
+  fi
   if [ -n "${FLAGS_servo_host}" ]; then
     SERVO_ARGS="--args=servo_host=${FLAGS_servo_host}"
     if [ -n "${FLAGS_servo_port}" ]; then
@@ -73,15 +86,29 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
   elif [ -n "${FLAGS_servo_port}" ]; then
     OPTIONS+=( "--args=servo_port=${FLAGS_servo_port}" )
   fi
+  if [ -n "${FLAGS_servo_host}" ]; then
+    GET_SERVO_TYPE_CMD+=( "--host=${FLAGS_servo_host}" )
+  fi
+  if [ -n "${FLAGS_servo_port}" ]; then
+    GET_SERVO_TYPE_CMD+=( "--port=${FLAGS_servo_port}" )
+  fi
+  GET_SERVO_TYPE_CMD+=( "servo_type" )
+
+  DETECTED_SERVO_TYPE=""
+  if [ -n "${DEBUG}" ]; then
+    echo "${GET_SERVO_TYPE_CMD[@]}"
+  else
+    DETECTED_SERVO_TYPE=$("${GET_SERVO_TYPE_CMD[@]}")
+  fi
+  if [ -z "${DEBUG}" ]; then
+    if [ "${DETECTED_SERVO_TYPE}" -ne "${FLAGS_servo_type}" ]; then
+      die "detected servo type does not match expected servo type"
+    fi
+  fi
 fi
 
 if [ "${SUITE_CHECK}" -gt 1 ]; then
   die "can specify at most one of --smoke --commit or --labqual"
-fi
-
-DEBUG=
-if [ "${FLAGS_debug}" -eq "${FLAGS_TRUE}" ]; then
-  DEBUG="echo"
 fi
 
 ${DEBUG} test_that "${OPTIONS[@]}" "${DUT}" "${TESTS[@]}"
