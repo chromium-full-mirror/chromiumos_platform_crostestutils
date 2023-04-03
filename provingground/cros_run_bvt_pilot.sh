@@ -86,6 +86,7 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
   elif [ -n "${FLAGS_servo_port}" ]; then
     OPTIONS+=( "--args=servo_port=${FLAGS_servo_port}" )
   fi
+
   if [ -n "${FLAGS_servo_host}" ]; then
     GET_SERVO_TYPE_CMD+=( "--host=${FLAGS_servo_host}" )
   fi
@@ -101,7 +102,7 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
     DETECTED_SERVO_TYPE=$("${GET_SERVO_TYPE_CMD[@]}")
   fi
   if [ -z "${DEBUG}" ]; then
-    if [ "${DETECTED_SERVO_TYPE}" -ne "${FLAGS_servo_type}" ]; then
+    if [ "${DETECTED_SERVO_TYPE}" != "${FLAGS_servo_type}" ]; then
       die "detected servo type does not match expected servo type"
     fi
   fi
