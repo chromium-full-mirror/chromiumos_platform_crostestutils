@@ -1,8 +1,0 @@
-set noparent
-
-dhanyaganesh@chromium.org
-seanabraham@chromium.org
-
-include chromiumos/chromite:/OWNERS.ci
-include chromiumos/chromite:/OWNERS.testplatform
-
