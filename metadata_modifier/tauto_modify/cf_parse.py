@@ -141,3 +141,4 @@ class ControlFile():
         self.contents = (self.contents[:self.metadata_start] +
                          new_metadata +
                          self.contents[self.metadata_end:])
+        self.metadata_end = self.metadata_start + len(new_metadata)

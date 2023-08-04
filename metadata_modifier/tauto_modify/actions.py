@@ -11,7 +11,7 @@ def remove_contacts(emails):
     """Return an action which removes the given list of emails from 'contacts'.
 
     Args:
-        emails: a list of strings, e.g. ['foo@google.com']
+        emails: A list of string emails, e.g. ['foo@google.com'].
 
     Returns:
         An action function that acts on a ControlFile and returns a boolean.
@@ -25,4 +25,44 @@ def remove_contacts(emails):
                 cf.metadata['contacts'].remove(email)
                 modified = True
         return modified
+    return output
+
+
+def append_contacts(emails):
+    """Return an action which appends the given emails to 'contacts'.
+
+    Args:
+        emails: A list of string emails, e.g. ['foo@google.com'].
+
+    Returns:
+        An action function that acts on a ControlFile and returns a boolean.
+    """
+    def output(cf):
+        if 'contacts' not in cf.metadata:
+            return False
+        for email in emails:
+            if email in cf.metadata['contacts']:
+                cf.metadata['contacts'].remove(email)
+        cf.metadata['contacts'] += emails
+        return True
+    return output
+
+
+def prepend_contacts(emails):
+    """Return an action which prepends the given emails to 'contacts'.
+
+    Args:
+        emails: A list of string emails, e.g. ['foo@google.com'].
+
+    Returns:
+        An action function that acts on a ControlFile and returns a boolean.
+    """
+    def output(cf):
+        if 'contacts' not in cf.metadata:
+            return False
+        for email in emails:
+            if email in cf.metadata['contacts']:
+                cf.metadata['contacts'].remove(email)
+        cf.metadata['contacts'] = emails + cf.metadata['contacts']
+        return True
     return output
