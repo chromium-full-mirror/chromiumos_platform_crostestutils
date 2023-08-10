@@ -103,7 +103,7 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
   fi
   if [ -z "${DEBUG}" ]; then
     if [ "${DETECTED_SERVO_TYPE}" != "${FLAGS_servo_type}" ]; then
-      die "detected servo type does not match expected servo type"
+      die "detected servo type ${DETECTED_SERVO_TYPE} does not match expected servo type ${FLAGS_servo_type}"
     fi
   fi
 fi
