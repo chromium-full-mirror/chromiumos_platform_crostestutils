@@ -12,7 +12,7 @@
     var base_url = 'https://launch.corp.google.com/launches?'
     // Add milestone, TEs, and Approver to launch url and redirect to it
     function UpdateUrlsWithMilestone(m, team, te, approver) {
-      var src = base_url.concat('&q=calendarId:2197 status:current<milestone><TE><approver>')
+      var src = base_url.concat('&q=calendarId:2197 <milestone><TE><approver>')
       // Milestone
       if (!m) {
         console.log('No Milestone provided')
