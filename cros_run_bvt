@@ -25,9 +25,11 @@ DEFINE_boolean labqual "${FLAGS_FALSE}" \
   "Run the BVT tests required for lab qualification"
 DEFINE_boolean debug "${FLAGS_FALSE}" \
   "Print commands that would've been run without doing anything"
+DEFINE_boolean labqual_stable "${FLAGS_FALSE}" \
+  "Run the BVT tests required for lab qualification using stable revamped labqual suite"
 
 # These options only matter if we're using Servo, which only
-# happens when --labqual is specified.
+# happens when --labqual or --labqual_stable is specified.
 DEFINE_string servo_host "" \
   "When running servo tests, specifies the host running servod"
 DEFINE_string servo_port "" \
@@ -35,6 +37,11 @@ DEFINE_string servo_port "" \
 # Free-form string to check against servod's reported servo type.
 DEFINE_string servo_type "" \
   "When running servo tests, specifies the servo type"
+# Free-form string to a file path for locally downloaded firmware tarball
+# only applicable when --labqual_stable is specified.
+# Ex: <dir>/firmware_from_source.tar.bz2
+DEFINE_string firmware_path "" \
+  "locally downloaded firmware file to run firmware flash tests through stable revamped labqual suite"
 
 # Parse command line; die on errors
 FLAGS_HELP="usage: $(basename "$0") [flags] <hostname-or-ipaddr>"
@@ -59,6 +66,7 @@ DUT="$1"
 OPTIONS=( --board="${FLAGS_board}" )
 TESTS=( suite:{labqual,bvt-{inline,cq,perbuild,tast-cq}} )
 GET_SERVO_TYPE_CMD=( "dut-control" "--value_only" )
+TAST_SERVO_PARAMS=( "-var=servo=" )
 
 SUITE_CHECK=0
 if [ "${FLAGS_smoke}" -eq "${FLAGS_TRUE}" ]; then
@@ -69,7 +77,7 @@ if [ "${FLAGS_commit}" -eq "${FLAGS_TRUE}" ]; then
   SUITE_CHECK=$(( SUITE_CHECK + 1 ))
   TESTS=( suite:bvt-{inline,cq,tast-cq} )
 fi
-if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
+if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ] || [ "${FLAGS_labqual_stable}" -eq "${FLAGS_TRUE}" ]; then
   SUITE_CHECK=$(( SUITE_CHECK + 1 ))
   TESTS=( suite:labqual)
 
@@ -77,10 +85,14 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
   if [ -z "${FLAGS_servo_type}" ]; then
     die "servo type must be specified for labquals to prevent false positives"
   fi
+  if [ "${FLAGS_labqual_stable}" -eq "${FLAGS_TRUE}" ] && [  -z "${FLAGS_servo_host}" -o  -z "${FLAGS_servo_port}" ]; then
+    die "servo host and port must be specified for labqual stable tests"
+  fi
   if [ -n "${FLAGS_servo_host}" ]; then
     SERVO_ARGS="--args=servo_host=${FLAGS_servo_host}"
     if [ -n "${FLAGS_servo_port}" ]; then
       SERVO_ARGS="${SERVO_ARGS} servo_port=${FLAGS_servo_port}"
+      TAST_SERVO_PARAMS+="${FLAGS_servo_host}:${FLAGS_servo_port}"
     fi
     OPTIONS+=( "${SERVO_ARGS}" )
   elif [ -n "${FLAGS_servo_port}" ]; then
@@ -108,6 +120,10 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
   fi
 fi
 
+if [ "${FLAGS_labqual_stable}" -eq "${FLAGS_TRUE}" ] && [ -n "${FLAGS_firmware_path}" ]; then
+  TAST_SERVO_PARAMS+=" -var=firmware.firmwarePath=${FLAGS_firmware_path}"
+fi
+
 if [ "${SUITE_CHECK}" -gt 1 ]; then
   die "can specify at most one of --smoke --commit or --labqual"
 fi
@@ -119,6 +135,11 @@ TAST_STATUS=0
 if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
   # Run a subset of Tast tests for qualifying a model before lab deployment.
   ${DEBUG} tast -verbose run -build=false "${DUT}" '("group:labqual")'
+  TAST_STATUS=$?
+fi
+if [ "${FLAGS_labqual_stable}" -eq "${FLAGS_TRUE}" ]; then
+  # Run a lanqual_stable Tast tests for qualifying a model before lab deployment.
+  ${DEBUG} tast -verbose run -build=false "${TAST_SERVO_PARAMS}" "${DUT}" '\(\"group:labqual_stable\"\)'
   TAST_STATUS=$?
 fi
 
