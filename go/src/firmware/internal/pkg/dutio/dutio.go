@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2020 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -109,7 +109,7 @@ func SendSSHCommand(hostname string, remoteCmd string) (out string, reterr error
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	// TODO(kmshelton): Avoid creating a connection and session for each command.
+	// TODO(seancarpenter): Avoid creating a connection and session for each command.
 	conn, err := ssh.Dial("tcp", hostname+":"+strconv.Itoa(sshServerPortNumber), config)
 	if err != nil {
 		return "", fmt.Errorf("failed to dial: %v", err)
@@ -127,7 +127,7 @@ func SendSSHCommand(hostname string, remoteCmd string) (out string, reterr error
 	session.Stdout = &stdout
 	session.Stderr = &stderr
 	if err := session.Run(remoteCmd); err != nil {
-		// TODO(kmshelton): create a new Error type
+		// TODO(seancarpenter): create a new Error type
 		log.Printf("Encountered an error when trying to run a remote command: %v", err)
 		log.Printf("Failed to run \"%s\" on host: %s.\nStdout was: %s\nStderr was: %s", remoteCmd, hostname, stdout.String(), stderr.String())
 		return "", err

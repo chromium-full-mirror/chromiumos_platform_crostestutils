@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -56,7 +56,7 @@ func sanitizeGobCurlOutput(output *[]byte) {
 }
 
 func queryGerrit(endpoint string, resource string) map[string]*json.RawMessage {
-	// TODO(kmshelton): Check that gob-curl exists in the user's environment.
+	// TODO(seancarpenter): Check that gob-curl exists in the user's environment.
 	// "gob-curl" is used instead of net/http due to the complexities of authenticating.
 	gerritCmd := exec.Command("gob-curl", endpoint+resource)
 	gerritCmdOut, err := gerritCmd.Output()

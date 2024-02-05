@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2020 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// TODO(kmshelton): Move the dut definition into the dutio package and make SendSSHCommand a method on dut.
+// TODO(seancarpenter): Move the dut definition into the dutio package and make SendSSHCommand a method on dut.
 type dut struct {
 	hostname            string
 	model               string
@@ -58,13 +58,13 @@ func (d *dut) printBugTemplate() {
 
 // setModel interfaces with a DUT and sets the model field (the DUT's market identifier).
 func (d *dut) setModel() error {
-	// TODO(kmshelton): Here and elsewhere: use dbus instead of executing commands directly
+	// TODO(seancarpenter): Here and elsewhere: use dbus instead of executing commands directly
 	// on the DUT (by exposing such functionality in dutio).
 	out, err := dutio.SendSSHCommand(d.hostname, "cros_config / name")
 	if err != nil {
 		return err
 	}
-	// TODO(kmshelton): Add some validation on out (here and elsewhere).
+	// TODO(seancarpenter): Add some validation on out (here and elsewhere).
 	d.model = strings.TrimSpace(out)
 	return nil
 }
