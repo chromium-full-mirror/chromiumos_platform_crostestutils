@@ -8,13 +8,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
 )
 
 const labstationTelemetryCmds = "grep guado_labstation-release /etc/lsb-release; " +
@@ -190,11 +191,11 @@ func main() {
 
 	for _, labstation := range labstations {
 		fmt.Println("Operating on ", labstation)
-		out, err := dutio.SendSSHCommand(labstation, labstationTelemetryCmds)
-		if err != nil {
-			log.Fatalf("%s appears unhealthy. Running the telemetry commands encountered: %s", labstation, err)
+		stdout, stderr := dutio.ExecuteRemoteCommand(labstation, labstationTelemetryCmds)
+		if stderr != "" {
+			log.Fatalf("%s appears unhealthy. Running the telemetry commands encountered: %s", labstation, stderr)
 		}
-		fmt.Println("\n", out)
+		fmt.Println("\n", stdout)
 	}
 
 	log.Print("Querying servos for their versions (note this depends on the servo consoles being in a functional state): ")
@@ -203,12 +204,12 @@ func main() {
 			continue
 		}
 		servoVersionsCommand := fmt.Sprintf("dut-control -p %s servo_micro_version; dut-control -p %s servo_v4_version;", dut.Port, dut.Port)
-		out, err := dutio.SendSSHCommand(dut.Labstation, servoVersionsCommand)
-		if err != nil {
+		stdout, stderr := dutio.ExecuteRemoteCommand(dut.Labstation, servoVersionsCommand)
+		if stderr != "" {
 			fmt.Printf("%s has a servo for %s that appears unhealthy.  Running the servo version commands encountered: %s\n\n",
-				dut.Labstation, dut.Hostname, err)
+				dut.Labstation, dut.Hostname, stderr)
 		} else {
-			fmt.Printf("%s\n%s\n", dut.Hostname, out)
+			fmt.Printf("%s\n%s\n", dut.Hostname, stdout)
 		}
 	}
 }

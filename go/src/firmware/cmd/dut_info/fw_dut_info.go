@@ -6,18 +6,18 @@ package main
 
 import (
 	"fmt"
-	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
 	"log"
 	"os"
 	"strings"
+
+	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
 )
 
-// TODO(seancarpenter): Move the dut definition into the dutio package and make SendSSHCommand a method on dut.
 type dut struct {
 	hostname            string
 	model               string
 	phase               string
-	crOSVersion         string
+	CROSVersion         string
 	biosVersion         string
 	ecROVersion         string
 	ecRWVersion         string
@@ -35,8 +35,8 @@ type dut struct {
 }
 
 func (d *dut) printBugTemplate() {
-	fmt.Println("Type of hardware  :", d.model, "{DEVICE STAGE: EVT, DVT, PVT...}")
-	fmt.Println("ChromeOS Version  :", d.crOSVersion)
+	fmt.Println("Model             :", d.model)
+	fmt.Println("ChromeOS Version  :", d.CROSVersion)
 	fmt.Println("BIOS Version      :", d.biosVersion)
 	fmt.Println("EC Version        :", d.ecROVersion, "/", d.ecRWVersion)
 	fmt.Println("cr50 Version      :", d.gscVersion)
@@ -56,179 +56,221 @@ func (d *dut) printBugTemplate() {
 	fmt.Println("VPD info:\n", d.vpd)
 }
 
-// setModel interfaces with a DUT and sets the model field (the DUT's market identifier).
-func (d *dut) setModel() error {
-	// TODO(seancarpenter): Here and elsewhere: use dbus instead of executing commands directly
-	// on the DUT (by exposing such functionality in dutio).
-	out, err := dutio.SendSSHCommand(d.hostname, "cros_config / name")
-	if err != nil {
-		return err
+// setModel interfaces with a DUT and sets the model field (the DUT's market
+// identifier).
+func (d *dut) setModel() {
+	// TODO(seancarpenter): Here and elsewhere: use dbus instead of executing
+	// commands directly on the DUT (by exposing such functionality in dutio).
+	stdout, stderr := dutio.ExecuteRemoteCommand(d.hostname, "cros_config / name")
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	// TODO(seancarpenter): Add some validation on out (here and elsewhere).
-	d.model = strings.TrimSpace(out)
-	return nil
+	d.model = strings.TrimSpace(stdout)
 }
 
-// setPhase interfaces with a DUT and sets the phase field (the DUT's hardware stage).
-func (d *dut) setPhase() error {
-	// Phase is not implemented in dut.sh (which this utility replaces), likely because
-	// getting phase involves interfacing with the HWID database.
+// setPhase interfaces with a DUT and sets the phase field (the DUT's hardware
+// stage).
+func (d *dut) setPhase() {
 	// TODO(b:150699151): Implement this setter (interface with the HWID database).
 	d.phase = ""
-	return nil
 }
 
-// setCrOSVersion interfaces with a DUT and sets the crOSVersion field (the DUT's version of ChromeOS).
-func (d *dut) setCrOSVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "grep '^CHROMEOS_RELEASE_DESCRIPTION=' /etc/lsb-release | cut -d= -f2")
-	if err != nil {
-		return err
+// setCROSVersion interfaces with a DUT and sets the CROSVersion field (the
+// DUT's version of ChromeOS).
+func (d *dut) setCROSVersion() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"grep '^CHROMEOS_RELEASE_DESCRIPTION=' /etc/lsb-release | cut -d= -f2",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.crOSVersion = strings.TrimSpace(out)
-	return nil
+	d.CROSVersion = strings.TrimSpace(stdout)
 }
 
-// setBIOSVersion interfaces with a DUT and sets the biosVersion field (the DUT's application processor firmware version).
-func (d *dut) setBIOSVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "echo $(crossystem ro_fwid) / $(crossystem fwid)")
-	if err != nil {
-		return err
+// setBIOSVersion interfaces with a DUT and sets the biosVersion field (the
+// DUT's application processor firmware version).
+func (d *dut) setBIOSVersion() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"echo $(crossystem ro_fwid) / $(crossystem fwid)",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.biosVersion = strings.TrimSpace(out)
-	return nil
+	d.biosVersion = strings.TrimSpace(stdout)
 }
 
-// setECROVersion interfaces with a DUT and sets the ecROVersion field (the version of the DUT's read-only copy of the primary
-// embedded controller's firmware version).
-func (d *dut) setECROVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "ectool version | awk '/^RO/{print $3}'")
-	if err != nil {
-		return err
+// setECROVersion interfaces with a DUT and sets the ecROVersion field (the
+// version of the DUT's read-only copy of the primary embedded controller's
+// firmware version).
+func (d *dut) setECROVersion() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"ectool version | awk '/^RO/{print $3}'",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.ecROVersion = strings.TrimSpace(out)
-	return nil
+	d.ecROVersion = strings.TrimSpace(stdout)
 }
 
-// setECRWVersion interfaces with a DUT and sets the ecRWVersion field (the version of the DUT's read-write copy of the primary
-// embedded controller's firmware version).
-func (d *dut) setECRWVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "ectool version | awk '/^RW/{print $3}'")
-	if err != nil {
-		return err
+// setECRWVersion interfaces with a DUT and sets the ecRWVersion field
+// (the version of the DUT's read-write copy of the primary embedded
+// controller's firmware version).
+func (d *dut) setECRWVersion() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"ectool version | awk '/^RW/{print $3}'",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.ecRWVersion = strings.TrimSpace(out)
-	return nil
+	d.ecRWVersion = strings.TrimSpace(stdout)
 }
 
-// setGSCVersion interfaces with a DUT and sets the gscVersion field (the version of the DUT's Google Security Chip firmware).
-func (d *dut) setGSCVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "echo $(grep ^RO /var/cache/cr50-version) / $(grep ^RW /var/cache/cr50-version)")
-	if err != nil {
-		return err
+// setGSCVersion interfaces with a DUT and sets the gscVersion field (the
+// version of the DUT's Google Security Chip firmware).
+func (d *dut) setGSCVersion() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"echo $(grep ^RO /var/cache/cr50-version) / $(grep ^RW /var/cache/cr50-version)",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.gscVersion = strings.TrimSpace(out)
-	return nil
+	d.gscVersion = strings.TrimSpace(stdout)
 }
 
-// setCPUArch interfaces with a DUT and sets the cpuArch field (the architecture of the central processing unit).
-func (d *dut) setCPUArch() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "lscpu | awk '/^Architecture:/{print $2}'")
-	if err != nil {
-		return err
+// setCPUArch interfaces with a DUT and sets the cpuArch field (the architecture
+// of the central processing unit).
+func (d *dut) setCPUArch() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"lscpu | awk '/^Architecture:/{print $2}'",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.cpuArch = strings.TrimSpace(out)
-	return nil
+	d.cpuArch = strings.TrimSpace(stdout)
 }
 
-// setCPUModel interfaces with a DUT and sets the cpuModel field (the market identifier of the central processing unit).
-func (d *dut) setCPUModel() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "lscpu | grep '^Model name:' | cut -d: -f2-")
-	if err != nil {
-		return err
+// setCPUModel interfaces with a DUT and sets the cpuModel field (the market
+// identifier of the central processing unit).
+func (d *dut) setCPUModel() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"lscpu | grep '^Model name:' | cut -d: -f2-",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.cpuModel = strings.TrimSpace(out)
-	return nil
+	d.cpuModel = strings.TrimSpace(stdout)
 }
 
-// setCPUSpeed interfaces with a DUT and sets the cpuSpeed field (the clock frequency of the central processing unit).
-func (d *dut) setCPUSpeed() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "lscpu | grep '^CPU max MHz:' | cut -d: -f2-")
-	if err != nil {
-		return err
+// setCPUSpeed interfaces with a DUT and sets the cpuSpeed field (the clock
+// frequency of the central processing unit).
+func (d *dut) setCPUSpeed() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"lscpu | grep '^CPU max MHz:' | cut -d: -f2-",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.cpuSpeed = strings.TrimSpace(out)
-	return nil
+	d.cpuSpeed = strings.TrimSpace(stdout)
 }
 
-// setTotalMemory interfaces with a DUT and sets the totalMemory field (the size of the main memory).
-func (d *dut) setTotalMemory() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "grep '^MemTotal:' /proc/meminfo 2>/dev/null | cut -d: -f2-")
-	if err != nil {
-		return err
+// setTotalMemory interfaces with a DUT and sets the totalMemory field (the
+// size of the main memory).
+func (d *dut) setTotalMemory() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"grep '^MemTotal:' /proc/meminfo 2>/dev/null | cut -d: -f2-",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.totalMemory = strings.TrimSpace(out)
-	return nil
+	d.totalMemory = strings.TrimSpace(stdout)
 }
 
-// setMemoryType interfaces with a DUT and sets the memoryType field (the technology class of the main memory).
-func (d *dut) setMemoryType() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "mosys memory spd print id 2>/dev/null | cut -d'|' -f2- | sort -u")
-	if err != nil {
-		return err
+// setMemoryType interfaces with a DUT and sets the memoryType field (the
+// technology class of the main memory).
+func (d *dut) setMemoryType() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"mosys memory spd print id 2>/dev/null | cut -d'|' -f2- | sort -u",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.memoryType = strings.TrimSpace(out)
-	return nil
+	d.memoryType = strings.TrimSpace(stdout)
 }
 
-// setMMCModel interfaces with a DUT and sets the mmcModel field (the multimedia card market identifier).
-func (d *dut) setMMCModel() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "MMCBLK=$(ls -d /sys/block/mmcblk? 2>/dev/null); if [ ! -z ${MMCBLK} ]; then cat $MMCBLK/device/name; else true; fi")
-	if err != nil {
-		return err
+// setMMCModel interfaces with a DUT and sets the mmcModel field (the multimedia
+// card market identifier).
+func (d *dut) setMMCModel() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"MMCBLK=$(ls -d /sys/block/mmcblk? 2>/dev/null); if [ ! -z ${MMCBLK} ]; then cat $MMCBLK/device/name; else true; fi",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.mmcModel = strings.TrimSpace(out)
-	return nil
+	d.mmcModel = strings.TrimSpace(stdout)
 }
 
-// setMMCFirmwareVersion interfaces with a DUT and sets the version of the multimedia card's firmware.
-func (d *dut) setMMCFirmwareVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "MMCBLK=$(ls -d /sys/block/mmcblk? 2>/dev/null); if [ ! -z ${MMCBLK} ]; then cat $MMCBLK/device/fwrev; else true; fi")
-	if err != nil {
-		return err
+// setMMCFirmwareVersion interfaces with a DUT and sets the version of the
+// multimedia card's firmware.
+func (d *dut) setMMCFirmwareVersion() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"MMCBLK=$(ls -d /sys/block/mmcblk? 2>/dev/null); if [ ! -z ${MMCBLK} ]; then cat $MMCBLK/device/fwrev; else true; fi",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.mmcFirmwareVersion = strings.TrimSpace(out)
-	return nil
+	d.mmcFirmwareVersion = strings.TrimSpace(stdout)
 }
 
-// setNVMEModel interfaces with a DUT and sets the nvmeModel (the market identifier of the non-volatile memory express solid state drive).
-func (d *dut) setNVMEModel() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "if [ -e /dev/nvme0n1 ]; then smartctl -a /dev/nvme0n1 | grep \"Model Number\" | tr -s ' ' | cut -d ' ' -f 3,4; else true; fi")
-	if err != nil {
-		return err
+// setNVMEModel interfaces with a DUT and sets the nvmeModel (the market
+// identifier of the non-volatile memory express solid state drive).
+func (d *dut) setNVMEModel() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"if [ -e /dev/nvme0n1 ]; then smartctl -a /dev/nvme0n1 | grep \"Model Number\" | tr -s ' ' | cut -d ' ' -f 3,4; else true; fi",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.nvmeModel = strings.TrimSpace(out)
-	return nil
+	d.nvmeModel = strings.TrimSpace(stdout)
 }
 
-// setNVMEFirmwareVersion interfaces with a DUT and sets the nvmeFirmwareVersion field (the firmware version of the non-volatile
-//  memory express solid state drive).
-func (d *dut) setNVMEFirmwareVersion() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "if [ -e /dev/nvme0n1 ]; then smartctl -a /dev/nvme0n1 | grep \"Firmware Version\" | tr -s ' ' | cut -d ' ' -f 3; else true; fi")
-	if err != nil {
-		return err
+// setNVMEFirmwareVersion interfaces with a DUT and sets the nvmeFirmwareVersion
+// field (the firmware version of the non-volatile memory express solid state
+// drive).
+func (d *dut) setNVMEFirmwareVersion() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"if [ -e /dev/nvme0n1 ]; then smartctl -a /dev/nvme0n1 | grep \"Firmware Version\" | tr -s ' ' | cut -d ' ' -f 3; else true; fi",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.nvmeFirmwareVersion = strings.TrimSpace(out)
-	return nil
+	d.nvmeFirmwareVersion = strings.TrimSpace(stdout)
 }
 
-// setVPD interfaces with a DUT and sets the vpd field (the "Vital Product Data").
-func (d *dut) setVPD() error {
-	out, err := dutio.SendSSHCommand(d.hostname, "vpd -l | grep -v DO_NOT_SHARE | grep -v -i mac")
-	if err != nil {
-		return err
+// setVPD interfaces with a DUT and sets the vpd field (the "Vital Product
+// Data").
+func (d *dut) setVPD() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"vpd -l | grep -v DO_NOT_SHARE | grep -v -i mac",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
 	}
-	d.vpd = strings.TrimSpace(out)
-	return nil
+	d.vpd = strings.TrimSpace(stdout)
 }
 
 // newDUT initializes all the fields in a dut struct.
@@ -236,7 +278,7 @@ func newDUT(hostname string) dut {
 	d := dut{hostname: hostname}
 	d.setModel()
 	d.setPhase()
-	d.setCrOSVersion()
+	d.setCROSVersion()
 	d.setBIOSVersion()
 	d.setECROVersion()
 	d.setECRWVersion()

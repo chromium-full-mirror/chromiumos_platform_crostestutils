@@ -11,11 +11,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 
 	"errors"
+
+	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
 )
 
 // CBILocation stores the port and address needed to reference CBI contents in
@@ -53,19 +54,19 @@ func main() {
 		fmt.Println("usage: corrupt_dut_cbi <hostname>")
 		return
 	}
-
-	_, stderr := executeRemoteCommand("")
+	hostname := os.Args[1]
+	_, stderr := dutio.ExecuteRemoteCommand(hostname, "")
 	if stderr != "" {
 		log.Panicf("unable to establish connection to the DUT: %s", stderr)
 	}
 
-	cbi, err := getCBILocation()
+	cbi, err := getCBILocation(hostname)
 	if err != nil {
 		log.Panicf("unable to determine if CBI is present on the DUT: %s", err)
 	}
 	fmt.Printf("CBI chip found at: Port %s, Address: %s\n\n", cbi.port, cbi.address)
 
-	cbiContents, err := cbi.readCBIContents()
+	cbiContents, err := cbi.readCBIContents(hostname)
 	if err != nil {
 		log.Panicf("unable to read initial CBI contents: %s", err)
 	}
@@ -75,12 +76,12 @@ func main() {
 	}
 	printCBIContents(cbiContents)
 
-	err = cbi.corruptCBIContents()
+	err = cbi.corruptCBIContents(hostname)
 	if err != nil {
 		log.Panicf("unable to corrupt CBI contents: %s", err)
 	}
 
-	cbiContents, err = cbi.readCBIContents()
+	cbiContents, err = cbi.readCBIContents(hostname)
 	if err != nil {
 		log.Panicf("unable to read corrupted CBI contents: %s", err)
 	}
@@ -92,36 +93,11 @@ func main() {
 
 }
 
-// executeRemoteCommand ssh's into the DUT, executes the provided command and
-// returns the STDOUT and STDERR in string format.
-//
-// NOTE: executeRemoteCommand opens up a brand new SSH connection on every command
-// it runs. This is much slower than maintaining an open connection, but much simpler.
-// If speed of execution is ever a requirement, look here first to optimize.
-func executeRemoteCommand(command string) (string, string) {
-	log.Println(command)
-	hostName := os.Args[1]
-	cmd := exec.Command("ssh",
-		"-q",                                 // Mute ssh warnings and info messages
-		"-o UserKnownHostsFile=/dev/null",    // Avoid referencing any prior known hosts.
-		"-o StrictHostKeyChecking=no",        // Sometimes the host keys for DUTs in our lab change. That is okay and should be ignored.
-		"-o IdentityFile=~/.ssh/testing_rsa", // go/chromeos-lab-duts-ssh
-		hostName,
-		command,
-	)
-	var outbuf, errbuf strings.Builder
-	cmd.Stdout = &outbuf
-	cmd.Stderr = &errbuf
-	cmd.Run()
-
-	return outbuf.String(), errbuf.String()
-}
-
 // readCBIContents returns the CBI contents of the DUT as a hex string.
-func (cbi CBILocation) readCBIContents() (string, error) {
+func (cbi CBILocation) readCBIContents(hostname string) (string, error) {
 	var hexContents []string
 	for _, readCommand := range cbi.generateReadCommands() {
-		stdout, stderr := executeRemoteCommand(readCommand)
+		stdout, stderr := dutio.ExecuteRemoteCommand(hostname, readCommand)
 		if stderr != "" || stdout == "" {
 			return "", errors.New("unable to read CBI contents: " + stderr)
 		}
@@ -137,9 +113,9 @@ func (cbi CBILocation) readCBIContents() (string, error) {
 }
 
 // corruptCBIContents generates and executes the write commands to corrupt the DUT
-func (cbi CBILocation) corruptCBIContents() error {
+func (cbi CBILocation) corruptCBIContents(hostname string) error {
 	for _, corruptionCommand := range cbi.generateCorruptionCommand() {
-		stdout, stderr := executeRemoteCommand(corruptionCommand)
+		stdout, stderr := dutio.ExecuteRemoteCommand(hostname, corruptionCommand)
 		if stderr != "" || stdout == "" {
 			return errors.New("unable to write CBI contents: " + stderr)
 		}
@@ -199,8 +175,8 @@ func (cbi CBILocation) generateReadCommands() []string {
 // getCBILocation uses the `ectool locatechip` utility to get the CBILocation
 // from the DUT. Will return an error if the DUT doesn't support CBI or if it
 // wasn't able to reach the DUT.
-func getCBILocation() (*CBILocation, error) {
-	stdout, stderr := executeRemoteCommand(locateCBICommand)
+func getCBILocation(hostname string) (*CBILocation, error) {
+	stdout, stderr := dutio.ExecuteRemoteCommand(hostname, locateCBICommand)
 	if stderr != "" {
 		return nil, errors.New("unable to determine if CBI is present on the DUT")
 	}
