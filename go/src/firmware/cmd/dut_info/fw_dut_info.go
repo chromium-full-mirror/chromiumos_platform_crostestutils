@@ -13,9 +13,14 @@ import (
 	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
 )
 
+const crosDeviceInfoURL = "https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/"
+
 type dut struct {
 	hostname            string
+	board               string
 	model               string
+	oem                 string
+	marketingName       string
 	phase               string
 	CROSVersion         string
 	biosVersion         string
@@ -35,7 +40,10 @@ type dut struct {
 }
 
 func (d *dut) printBugTemplate() {
+	fmt.Println("Board             :", d.board)
 	fmt.Println("Model             :", d.model)
+	fmt.Println("OEM               :", d.oem)
+	fmt.Println("Marketing Name    :", d.marketingName)
 	fmt.Println("ChromeOS Version  :", d.CROSVersion)
 	fmt.Println("BIOS Version      :", d.biosVersion)
 	fmt.Println("EC Version        :", d.ecROVersion, "/", d.ecRWVersion)
@@ -56,6 +64,24 @@ func (d *dut) printBugTemplate() {
 	fmt.Println("VPD info:\n", d.vpd)
 }
 
+// setBoard fetches the board from the DUT and sets the board field
+func (d *dut) setBoard() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"grep '^CHROMEOS_RELEASE_BOARD=' /etc/lsb-release",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
+	}
+
+	stdoutSplit := strings.Split(stdout, "=")
+	if len(stdoutSplit) == 2 {
+		d.board = strings.TrimSpace(stdoutSplit[1])
+	} else {
+		fmt.Printf("Unable to parse setBoard stdout: \"%s\"\n", stdout)
+	}
+}
+
 // setModel interfaces with a DUT and sets the model field (the DUT's market
 // identifier).
 func (d *dut) setModel() {
@@ -66,6 +92,18 @@ func (d *dut) setModel() {
 		fmt.Println(stderr)
 	}
 	d.model = strings.TrimSpace(stdout)
+}
+
+// setOEM uses the board and model to look up the OEM.
+// TODO(seancarpenter) Implement this
+func (d *dut) setOEM() {
+	d.oem = fmt.Sprintf("Look up the board and model at: %s", crosDeviceInfoURL)
+}
+
+// setMarketingName uses the board and model to look up the Marketing Name
+// TODO(seancarpenter) Implement this
+func (d *dut) setMarketingName() {
+	d.marketingName = fmt.Sprintf("Look up the board and model at: %s", crosDeviceInfoURL)
 }
 
 // setPhase interfaces with a DUT and sets the phase field (the DUT's hardware
@@ -277,6 +315,9 @@ func (d *dut) setVPD() {
 func newDUT(hostname string) dut {
 	d := dut{hostname: hostname}
 	d.setModel()
+	d.setBoard()
+	d.setOEM()
+	d.setMarketingName()
 	d.setPhase()
 	d.setCROSVersion()
 	d.setBIOSVersion()
