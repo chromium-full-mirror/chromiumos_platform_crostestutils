@@ -32,6 +32,7 @@ type dut struct {
 	cpuSpeed            string
 	totalMemory         string
 	memoryType          string
+	memoryID            string
 	mmcModel            string
 	mmcFirmwareVersion  string
 	nvmeModel           string
@@ -49,10 +50,12 @@ func (d *dut) printBugTemplate() {
 	fmt.Println("EC Version        :", d.ecROVersion, "/", d.ecRWVersion)
 	fmt.Println("cr50 Version      :", d.gscVersion)
 	fmt.Println()
+	fmt.Println("CPU Model         :", d.cpuModel)
 	fmt.Println("CPU arch          :", d.cpuArch)
 	fmt.Println("CPU speed         :", d.cpuSpeed)
 	fmt.Println("Total Memory      :", d.totalMemory)
 	fmt.Println("Memory Type       :", d.memoryType)
+	fmt.Println("Memory ID         :", d.memoryID)
 	if d.mmcModel != "" {
 		fmt.Println("MMC Model         :", d.mmcModel)
 		fmt.Println("MMC Firmware      :", d.mmcFirmwareVersion)
@@ -216,7 +219,7 @@ func (d *dut) setCPUSpeed() {
 	if stderr != "" {
 		fmt.Println(stderr)
 	}
-	d.cpuSpeed = strings.TrimSpace(stdout)
+	d.cpuSpeed = fmt.Sprintf("%s MHz", strings.TrimSpace(stdout))
 }
 
 // setTotalMemory interfaces with a DUT and sets the totalMemory field (the
@@ -232,17 +235,40 @@ func (d *dut) setTotalMemory() {
 	d.totalMemory = strings.TrimSpace(stdout)
 }
 
-// setMemoryType interfaces with a DUT and sets the memoryType field (the
-// technology class of the main memory).
+// setMemoryType interfaces with a DUT and sets the memoryType field (e.g. DDR4)
 func (d *dut) setMemoryType() {
 	stdout, stderr := dutio.ExecuteRemoteCommand(
 		d.hostname,
-		"mosys memory spd print id 2>/dev/null | cut -d'|' -f2- | sort -u",
+		"mosys memory spd print type 0",
 	)
 	if stderr != "" {
 		fmt.Println(stderr)
 	}
-	d.memoryType = strings.TrimSpace(stdout)
+	stdoutSplit := strings.Split(stdout, "|")
+	if len(stdoutSplit) == 2 {
+		d.memoryType = strings.TrimSpace(stdoutSplit[1])
+	} else {
+		fmt.Printf("Unable to parse setMemoryType stdout: \"%s\"\n", stdout)
+	}
+}
+
+// setMemoryID interfaces with a DUT and sets the memory ID (the unique ID
+// that identifies the exact memory model)
+func (d *dut) setMemoryID() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"mosys memory spd print id 0",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
+	}
+	stdoutSplit := strings.Split(stdout, "|")
+	if len(stdoutSplit) == 3 {
+		d.memoryID = strings.TrimSpace(stdoutSplit[2])
+	} else {
+		fmt.Printf("Unable to parse setMemoryID stdout: \"%s\"\n", stdout)
+	}
+
 }
 
 // setMMCModel interfaces with a DUT and sets the mmcModel field (the multimedia
@@ -329,6 +355,7 @@ func newDUT(hostname string) dut {
 	d.setCPUSpeed()
 	d.setTotalMemory()
 	d.setMemoryType()
+	d.setMemoryID()
 	d.setMMCModel()
 	d.setMMCFirmwareVersion()
 	d.setNVMEModel()
