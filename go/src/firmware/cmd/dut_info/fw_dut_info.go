@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
@@ -33,6 +34,7 @@ type dut struct {
 	totalMemory         string
 	memoryType          string
 	memoryID            string
+	memorySpeed         string
 	mmcModel            string
 	mmcFirmwareVersion  string
 	nvmeModel           string
@@ -56,6 +58,7 @@ func (d *dut) printBugTemplate() {
 	fmt.Println("Total Memory      :", d.totalMemory)
 	fmt.Println("Memory Type       :", d.memoryType)
 	fmt.Println("Memory ID         :", d.memoryID)
+	fmt.Println("Memory Speed      :", d.memorySpeed)
 	if d.mmcModel != "" {
 		fmt.Println("MMC Model         :", d.mmcModel)
 		fmt.Println("MMC Firmware      :", d.mmcFirmwareVersion)
@@ -271,6 +274,26 @@ func (d *dut) setMemoryID() {
 
 }
 
+// setMemorySpeed interfaces with a DUT and sets the memory speed in MHz
+func (d *dut) setMemorySpeed() {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"dmidecode --type memory",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
+	}
+
+	r := regexp.MustCompile(`Speed: (?P<Speed>\d+)`)
+	res := r.FindStringSubmatch(stdout)
+	if len(res) >= 1 {
+		d.memorySpeed = fmt.Sprintf("%s MHz", res[1])
+	} else {
+		fmt.Printf("Unable to parse setMemorySpeed stdout: \"%s\"\n", stdout)
+	}
+
+}
+
 // setMMCModel interfaces with a DUT and sets the mmcModel field (the multimedia
 // card market identifier).
 func (d *dut) setMMCModel() {
@@ -356,6 +379,7 @@ func newDUT(hostname string) dut {
 	d.setTotalMemory()
 	d.setMemoryType()
 	d.setMemoryID()
+	d.setMemorySpeed()
 	d.setMMCModel()
 	d.setMMCFirmwareVersion()
 	d.setNVMEModel()
