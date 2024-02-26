@@ -39,6 +39,7 @@ type dut struct {
 	mmcFirmwareVersion  string
 	nvmeModel           string
 	nvmeFirmwareVersion string
+	storageType         string
 	vpd                 string
 }
 
@@ -59,6 +60,7 @@ func (d *dut) printBugTemplate() {
 	fmt.Println("Memory Type       :", d.memoryType)
 	fmt.Println("Memory ID         :", d.memoryID)
 	fmt.Println("Memory Speed      :", d.memorySpeed)
+	fmt.Println("Storage Type      :", d.storageType)
 	if d.mmcModel != "" {
 		fmt.Println("MMC Model         :", d.mmcModel)
 		fmt.Println("MMC Firmware      :", d.mmcFirmwareVersion)
@@ -294,6 +296,35 @@ func (d *dut) setMemorySpeed() {
 
 }
 
+// setStorageType interfaces with a DUT and sets the storage type (NVME, UFS,
+// etc)
+func (d *dut) setStorageType() {
+	// NOTE: Determining storage type is surprisingly hard. This
+	// is a relatively hacky way of doing it.
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		". /usr/share/misc/storage-info-common.sh; get_storage_info",
+	)
+	if stderr != "" {
+		fmt.Println(stderr)
+	}
+
+	d.storageType = "UNKNOWN"
+	ssdRegex := regexp.MustCompile(`SATA Version is:`)
+	ufsRegex := regexp.MustCompile(`ufs-utils`)
+	nvmeRegex := regexp.MustCompile("NVME")
+	mmcRegex := regexp.MustCompile("MMC")
+	if ssdRegex.MatchString(stdout) {
+		d.storageType = "SSD"
+	} else if ufsRegex.MatchString(stdout) {
+		d.storageType = "UFS"
+	} else if nvmeRegex.MatchString(stdout) {
+		d.storageType = "NVME"
+	} else if mmcRegex.MatchString(stdout) {
+		d.storageType = "MMC"
+	}
+}
+
 // setMMCModel interfaces with a DUT and sets the mmcModel field (the multimedia
 // card market identifier).
 func (d *dut) setMMCModel() {
@@ -380,6 +411,7 @@ func newDUT(hostname string) dut {
 	d.setMemoryType()
 	d.setMemoryID()
 	d.setMemorySpeed()
+	d.setStorageType()
 	d.setMMCModel()
 	d.setMMCFirmwareVersion()
 	d.setNVMEModel()
