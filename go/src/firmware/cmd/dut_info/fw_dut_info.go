@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
@@ -36,12 +37,24 @@ type dut struct {
 	memoryType          string
 	memoryID            string
 	memorySpeed         string
+	storageType         string
+	storageSize         string
 	mmcModel            string
 	mmcFirmwareVersion  string
 	nvmeModel           string
 	nvmeFirmwareVersion string
-	storageType         string
 	vpd                 string
+}
+
+// convertBytesToGigabytes performs a simple conversion of bytes to Gigabytes
+func convertBytesToGigabytes(bytes int) float64 {
+	return float64(bytes) / 1000 / 1000 / 1000
+}
+
+// convertKilobytesToGigabytes performs a simple conversion of Kilobytes to
+// Gigabytes
+func convertKilobytesToGigabytes(kilobytes int) float64 {
+	return float64(kilobytes) / 1000 / 1000
 }
 
 // printField prints the DUT field and value with padding.
@@ -70,6 +83,7 @@ func (d *dut) printFields() {
 	d.printField("Memory ID", d.memoryID)
 	d.printField("Memory Speed", d.memorySpeed)
 	d.printField("Storage Type", d.storageType)
+	d.printField("Storage Size", d.storageSize)
 	if d.mmcModel != "" {
 		d.printField("MMC Model", d.mmcModel)
 		d.printField("MMC Firmware", d.mmcFirmwareVersion)
@@ -241,9 +255,22 @@ func (d *dut) setCPUSpeed() error {
 func (d *dut) setTotalMemory() error {
 	stdout, stderr := dutio.ExecuteRemoteCommand(
 		d.hostname,
-		"grep '^MemTotal:' /proc/meminfo 2>/dev/null | cut -d: -f2-",
+		"cat /proc/meminfo",
 	)
-	d.totalMemory = strings.TrimSpace(stdout)
+	r := regexp.MustCompile(`MemTotal:\s+(?P<TotalMemory>\d+)`)
+	res := r.FindStringSubmatch(stdout)
+	if len(res) > 1 {
+		totalMemoryInKilobytes, err := strconv.Atoi(res[1])
+		// We should never fail to convert here since the regex capture group
+		// should always contain an integer, but good to check anyways.
+		if err != nil {
+			stderr += fmt.Sprintf("Unable to parse setTotalMemory stdout: \"%s\"\n%s\n", stdout, err)
+		} else {
+			d.totalMemory = fmt.Sprintf("%.2f GB", convertKilobytesToGigabytes(totalMemoryInKilobytes))
+		}
+	} else {
+		stderr += fmt.Sprintf("Unable to parse setTotalMemory stdout: \"%s\"\n", stdout)
+	}
 	return buildErr(stderr)
 }
 
@@ -286,7 +313,7 @@ func (d *dut) setMemorySpeed() error {
 	)
 	r := regexp.MustCompile(`Speed: (?P<Speed>\d+)`)
 	res := r.FindStringSubmatch(stdout)
-	if len(res) >= 1 {
+	if len(res) > 1 {
 		d.memorySpeed = fmt.Sprintf("%s MHz", res[1])
 	} else {
 		stderr += fmt.Sprintf("Unable to parse setMemorySpeed stdout: \"%s\"\n", stdout)
@@ -317,6 +344,20 @@ func (d *dut) setStorageType() error {
 	} else if mmcRegex.MatchString(stdout) {
 		d.storageType = "MMC"
 	}
+	return buildErr(stderr)
+}
+
+// setStorageSize interfaces with the DUT to get the total storage size (in GB).
+func (d *dut) setStorageSize() error {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"spaced_cli --get_root_device_size",
+	)
+	storageSizeInBytes, err := strconv.Atoi(stdout)
+	if err != nil {
+		stderr += fmt.Sprintf("Unable to parse setStorageSize stdout: \"%s\"\n%s\n", stdout, err)
+	}
+	d.storageSize = fmt.Sprintf("%.2f GB", convertBytesToGigabytes(storageSizeInBytes))
 	return buildErr(stderr)
 }
 
@@ -397,6 +438,7 @@ func newDUT(hostname string) dut {
 	d.setField("Memory ID", d.setMemoryID)
 	d.setField("Memory Speed", d.setMemorySpeed)
 	d.setField("Storage Type", d.setStorageType)
+	d.setField("Storage Size", d.setStorageSize)
 	d.setField("MMC Model", d.setMMCModel)
 	d.setField("MMC Firmware", d.setMMCFirmwareVersion)
 	d.setField("NVMe Model", d.setNVMEModel)
