@@ -46,6 +46,7 @@ type dut struct {
 	nvmeFirmwareVersion string
 	displaySize         string
 	displayResolution   string
+	displayRefreshRate  string
 	vpd                 string
 }
 
@@ -105,6 +106,7 @@ func (d *dut) printFields() {
 	fmt.Println()
 	d.printField("Display Size", d.displaySize)
 	d.printField("Display Resolution", d.displayResolution)
+	d.printField("Display Refresh Rate", d.displayRefreshRate)
 	fmt.Println()
 	d.printField("VPD", d.vpd)
 }
@@ -461,6 +463,22 @@ func (d *dut) setDisplayResolution() error {
 	return buildErr(stderr)
 }
 
+// setDisplayRefreshRate gets the refresh rate of the display in Hz
+func (d *dut) setDisplayRefreshRate() error {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"find /sys -name '*edid' -exec edid-decode {} \\;",
+	)
+	r := regexp.MustCompile(`DTD.*\s(?P<RefreshRate>\d+\.\d+ Hz)`)
+	res := r.FindStringSubmatch(stdout)
+	if len(res) > 1 {
+		d.displayRefreshRate = res[1]
+	} else {
+		stderr += fmt.Sprintf("Unable to parse setDisplayRefreshRate stdout: \"%s\"\n", stdout)
+	}
+	return buildErr(stderr)
+}
+
 // setVPD interfaces with a DUT and sets the vpd field (the "Vital Product
 // Data").
 func (d *dut) setVPD() error {
@@ -500,6 +518,7 @@ func newDUT(hostname string) dut {
 	d.setField("NVMe Firmware", d.setNVMEFirmwareVersion)
 	d.setField("Display Size", d.setDisplaySize)
 	d.setField("Display Resolution", d.setDisplayResolution)
+	d.setField("Display Refresh Rate", d.setDisplayRefreshRate)
 	d.setField("VPD", d.setVPD)
 	return d
 }
