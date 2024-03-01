@@ -45,6 +45,7 @@ type dut struct {
 	nvmeModel           string
 	nvmeFirmwareVersion string
 	displaySize         string
+	displayResolution   string
 	vpd                 string
 }
 
@@ -86,10 +87,12 @@ func (d *dut) printFields() {
 	d.printField("CPU Model", d.cpuModel)
 	d.printField("CPU Arch", d.cpuArch)
 	d.printField("CPU Speed", d.cpuSpeed)
+	fmt.Println()
 	d.printField("Total Memory", d.totalMemory)
 	d.printField("Memory Type", d.memoryType)
 	d.printField("Memory ID", d.memoryID)
 	d.printField("Memory Speed", d.memorySpeed)
+	fmt.Println()
 	d.printField("Storage Type", d.storageType)
 	d.printField("Storage Size", d.storageSize)
 	if d.mmcModel != "" {
@@ -101,6 +104,8 @@ func (d *dut) printFields() {
 	}
 	fmt.Println()
 	d.printField("Display Size", d.displaySize)
+	d.printField("Display Resolution", d.displayResolution)
+	fmt.Println()
 	d.printField("VPD", d.vpd)
 }
 
@@ -440,6 +445,22 @@ func (d *dut) setDisplaySize() error {
 	return buildErr(stderr)
 }
 
+// setDisplayResolution gets the resolution of the display
+func (d *dut) setDisplayResolution() error {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"find /sys -name '*edid' -exec edid-decode {} \\;",
+	)
+	r := regexp.MustCompile(`DTD \d:\s+(?P<Resolution>\d+x\d+)`)
+	res := r.FindStringSubmatch(stdout)
+	if len(res) > 1 {
+		d.displayResolution = res[1]
+	} else {
+		stderr += fmt.Sprintf("Unable to parse setDisplayResolution stdout: \"%s\"\n", stdout)
+	}
+	return buildErr(stderr)
+}
+
 // setVPD interfaces with a DUT and sets the vpd field (the "Vital Product
 // Data").
 func (d *dut) setVPD() error {
@@ -478,6 +499,7 @@ func newDUT(hostname string) dut {
 	d.setField("NVMe Model", d.setNVMEModel)
 	d.setField("NVMe Firmware", d.setNVMEFirmwareVersion)
 	d.setField("Display Size", d.setDisplaySize)
+	d.setField("Display Resolution", d.setDisplayResolution)
 	d.setField("VPD", d.setVPD)
 	return d
 }
