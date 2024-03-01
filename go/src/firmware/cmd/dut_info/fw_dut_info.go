@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -43,6 +44,7 @@ type dut struct {
 	mmcFirmwareVersion  string
 	nvmeModel           string
 	nvmeFirmwareVersion string
+	displaySize         string
 	vpd                 string
 }
 
@@ -55,6 +57,12 @@ func convertBytesToGigabytes(bytes int) float64 {
 // Gigabytes
 func convertKilobytesToGigabytes(kilobytes int) float64 {
 	return float64(kilobytes) / 1000 / 1000
+}
+
+// convertCentimetersToInches performs a simple conversion of centimeters to
+// inches
+func convertCentimetersToInches(centimeters float64) float64 {
+	return centimeters / 2.54
 }
 
 // printField prints the DUT field and value with padding.
@@ -92,6 +100,7 @@ func (d *dut) printFields() {
 		d.printField("NVMe Firmware", d.nvmeFirmwareVersion)
 	}
 	fmt.Println()
+	d.printField("Display Size", d.displaySize)
 	d.printField("VPD", d.vpd)
 }
 
@@ -406,6 +415,31 @@ func (d *dut) setNVMEFirmwareVersion() error {
 	return buildErr(stderr)
 }
 
+// setDisplaySize gets the display size in inches.
+func (d *dut) setDisplaySize() error {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"find /sys -name '*edid' -exec edid-decode {} \\;",
+	)
+	r := regexp.MustCompile(`Maximum image size: (?P<Width>\d+) cm x (?P<Height>\d+) cm`)
+	res := r.FindStringSubmatch(stdout)
+	if len(res) > 2 {
+		width, widthErr := strconv.ParseFloat(res[1], 64)
+		height, heightErr := strconv.ParseFloat(res[2], 64)
+		if widthErr != nil || heightErr != nil {
+			stderr += fmt.Sprintf("Unable to parse setDisplaySize stdout: \"%s\"\n%s%s\n", stdout, widthErr, heightErr)
+		} else {
+			width = convertCentimetersToInches(width)
+			height = convertCentimetersToInches(height)
+			diagonalLength := math.Sqrt(math.Pow(width, 2) + math.Pow(height, 2))
+			d.displaySize = fmt.Sprintf("%.2f in x %.2f in (%.2f in diagonal)", width, height, diagonalLength)
+		}
+	} else {
+		stderr += fmt.Sprintf("Unable to parse setDisplaySize stdout: \"%s\"\n", stdout)
+	}
+	return buildErr(stderr)
+}
+
 // setVPD interfaces with a DUT and sets the vpd field (the "Vital Product
 // Data").
 func (d *dut) setVPD() error {
@@ -443,6 +477,7 @@ func newDUT(hostname string) dut {
 	d.setField("MMC Firmware", d.setMMCFirmwareVersion)
 	d.setField("NVMe Model", d.setNVMEModel)
 	d.setField("NVMe Firmware", d.setNVMEFirmwareVersion)
+	d.setField("Display Size", d.setDisplaySize)
 	d.setField("VPD", d.setVPD)
 	return d
 }
