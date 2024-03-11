@@ -121,7 +121,7 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ] || [ "${FLAGS_labqual_stable}" -eq
 fi
 
 if [ "${FLAGS_labqual_stable}" -eq "${FLAGS_TRUE}" ] && [ -n "${FLAGS_firmware_path}" ]; then
-  TAST_SERVO_PARAMS+=" -var=firmware.firmwarePath=${FLAGS_firmware_path}"
+  TAST_SERVO_PARAMS+=" -var=firmware.localFirmwarePath=${FLAGS_firmware_path}"
 fi
 
 if [ "${SUITE_CHECK}" -gt 1 ]; then
@@ -139,7 +139,7 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ]; then
 fi
 if [ "${FLAGS_labqual_stable}" -eq "${FLAGS_TRUE}" ]; then
   # Run a lanqual_stable Tast tests for qualifying a model before lab deployment.
-  ${DEBUG} tast -verbose run -build=false "${TAST_SERVO_PARAMS}" "${DUT}" '\(\"group:labqual_stable\"\)'
+  ${DEBUG} tast -verbose run -build=false "${TAST_SERVO_PARAMS}" "${DUT}" '("group:labqual_stable")'
   TAST_STATUS=$?
 fi
 
