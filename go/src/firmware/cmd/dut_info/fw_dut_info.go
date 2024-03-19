@@ -20,34 +20,35 @@ import (
 const crosDeviceInfoURL = "https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/"
 
 type dut struct {
-	hostname            string
-	board               string
-	model               string
-	oem                 string
-	marketingName       string
-	phase               string
-	CROSVersion         string
-	biosVersion         string
-	ecROVersion         string
-	ecRWVersion         string
-	gscVersion          string
-	cpuArch             string
-	cpuModel            string
-	cpuSpeed            string
-	totalMemory         string
-	memoryType          string
-	memoryID            string
-	memorySpeed         string
-	storageType         string
-	storageSize         string
-	mmcModel            string
-	mmcFirmwareVersion  string
-	nvmeModel           string
-	nvmeFirmwareVersion string
-	displaySize         string
-	displayResolution   string
-	displayRefreshRate  string
-	vpd                 string
+	hostname                string
+	board                   string
+	model                   string
+	oem                     string
+	marketingName           string
+	phase                   string
+	CROSVersion             string
+	biosVersion             string
+	ecROVersion             string
+	ecRWVersion             string
+	gscVersion              string
+	cpuArch                 string
+	cpuModel                string
+	cpuSpeed                string
+	totalMemory             string
+	memoryType              string
+	memoryID                string
+	memorySpeed             string
+	storageType             string
+	storageSize             string
+	mmcModel                string
+	mmcFirmwareVersion      string
+	nvmeModel               string
+	nvmeFirmwareVersion     string
+	displaySize             string
+	displayResolution       string
+	displayRefreshRate      string
+	designedBatteryCapacity string
+	vpd                     string
 }
 
 // convertBytesToGigabytes performs a simple conversion of bytes to Gigabytes
@@ -107,6 +108,8 @@ func (d *dut) printFields() {
 	d.printField("Display Size", d.displaySize)
 	d.printField("Display Resolution", d.displayResolution)
 	d.printField("Display Refresh Rate", d.displayRefreshRate)
+	fmt.Println()
+	d.printField("Designed Battery Capacity", d.designedBatteryCapacity)
 	fmt.Println()
 	d.printField("VPD", d.vpd)
 }
@@ -479,6 +482,36 @@ func (d *dut) setDisplayRefreshRate() error {
 	return buildErr(stderr)
 }
 
+// setDesignedBatteryCapacity gets the designed battery capacity of the dut in
+// Wh (watt hours).
+func (d *dut) setDesignedBatteryCapacity() error {
+	stdout, stderr := dutio.ExecuteRemoteCommand(
+		d.hostname,
+		"ectool battery",
+	)
+	r := regexp.MustCompile(`Design capacity:\s+(\d+)`)
+	res := r.FindStringSubmatch(stdout)
+	designedCapacityInMAH := 0.0
+	if len(res) > 1 {
+		designedCapacityInMAH, _ = strconv.ParseFloat(res[1], 64)
+	} else {
+		stderr += fmt.Sprintf("Unable to parse setDesignedBatteryCapacity stdout: \"%s\"\n", stdout)
+	}
+
+	r = regexp.MustCompile(`Design output voltage\s+(\d+)`)
+	res = r.FindStringSubmatch(stdout)
+	designedVoltageInMV := 0.0
+	if len(res) > 1 {
+		designedVoltageInMV, _ = strconv.ParseFloat(res[1], 64)
+	} else {
+		stderr += fmt.Sprintf("Unable to parse setDesignedBatteryCapacity stdout: \"%s\"\n", stdout)
+	}
+	if designedCapacityInMAH > 0 && designedVoltageInMV > 0 {
+		d.designedBatteryCapacity = fmt.Sprintf("%.2f Watt Hours", (designedCapacityInMAH/1000.0)*(designedVoltageInMV/1000.0))
+	}
+	return buildErr(stderr)
+}
+
 // setVPD interfaces with a DUT and sets the vpd field (the "Vital Product
 // Data").
 func (d *dut) setVPD() error {
@@ -519,6 +552,7 @@ func newDUT(hostname string) dut {
 	d.setField("Display Size", d.setDisplaySize)
 	d.setField("Display Resolution", d.setDisplayResolution)
 	d.setField("Display Refresh Rate", d.setDisplayRefreshRate)
+	d.setField("Desgined Battery Capacity", d.setDesignedBatteryCapacity)
 	d.setField("VPD", d.setVPD)
 	return d
 }
