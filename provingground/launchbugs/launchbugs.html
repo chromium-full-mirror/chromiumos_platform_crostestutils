@@ -11,38 +11,42 @@
   <script>
     var base_url = 'https://launch.corp.google.com/launches?'
     // Add milestone, TEs, and Approver to launch url and redirect to it
-    function UpdateUrlsWithMilestone(m, team, te, approver) {
-      var src = base_url.concat('&q=calendarId:2197 <milestone><TE><approver>')
+    function UpdateUrlsWithParams(milestone, team, tester, approver) {
+      var src = base_url.concat('&q=calendarId:2197 <team><milestone><tester><approver>')
       // Milestone
-      if (!m) {
+      if (!milestone) {
         console.log('No Milestone provided')
-        m = ''
+        milestone = ''
       }
       else {
-        m = ' ("Stable Target Milestone":"' + m + '" OR "Stable Experiment Target Milestone":"' + m + '")'
+        milestone = ' ("Stable Target Milestone":"' + milestone + '" OR "Stable Experiment Target Milestone":"' + milestone + '")'
       }
-      src = src.replace(/<milestone>/g, m)
-      // Team Logic overrides TE
-      if (team && team.toLowerCase() == "corex") {
-        console.log('Team found, overrides TE')
-        te = 'dhaddock,kyleshima,hyungtaekim,awendy'
+      src = src.replace(/<milestone>/g, milestone)
+      // Team Logic
+      if (!team) {
+        console.log('No Team provided')
+        team = ''
       }
+      else {
+        team = ' underteamid:' + GetTeamId(team)
+      }
+      src = src.replace(/<team>/g, team)
       // TE
-      if (!te) {
+      if (!tester) {
         console.log('No TE provided')
-        te = ''
+        tester = ''
       }
-      else if (te == "new") {
-        console.log('New TEs')
-        te = ' te:NULL'
+      else if (tester == "new") {
+        console.log('No testers assigned')
+        tester = ' te:NULL'
       }
       else {
         // TODO: Remove this replacement once b/237097115 is fixed
-        te = te.replace(/%2C/g, '" OR "')
+        tester = tester.replace(/%2C/g, '" OR "')
         // Verify if multiple TEs provided
-        te = ' "te":("' +te.replace(/,/g, '" OR "')+ '")'
+        tester = ' "te":("' +tester.replace(/,/g, '" OR "')+ '")'
       }
-      src = src.replace(/<TE>/g, te)
+      src = src.replace(/<tester>/g, tester)
       // EngProd Bit Approver
       if (!approver) {
         console.log('No Approver provided')
@@ -58,11 +62,17 @@
       window.location.replace(src);
     }
     // Get Params
-    var m = GetURLParameter('m')
-    var team = GetURLParameter('team')
-    var te = GetURLParameter('te')
-    var approver = GetURLParameter('a')
-    UpdateUrlsWithMilestone(m, team, te, approver)
+    // If user is requesting help, redirect to go link helper image
+    if (GetURLParameter('help')){
+      window.location.replace('https://screenshot.googleplex.com/7B3hsgkmYUxfB3N.png');
+    }
+    else{
+      var m = GetURLParameter('m')
+      var team = GetURLParameter('team')
+      var te = GetURLParameter('te')
+      var approver = GetURLParameter('a')
+      UpdateUrlsWithParams(m, team, te, approver)
+    }
   </script>
 </body>
 </html>
