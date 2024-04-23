@@ -11,5 +11,5 @@ directory contains the following tools:
 * `showbootdata` parses and displays the boot time performance data from
   previous runs of `bootperf`.
 
-See [the document](https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/measuring-boot-time-performance)
+See [the document](https://www.chromium.org/chromium-os/developer-library/guides/performance/measuring-boot-time-performance/)
 for detailed usage information.
