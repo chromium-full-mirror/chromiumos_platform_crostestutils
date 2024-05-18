@@ -82,9 +82,6 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ] || [ "${FLAGS_labqual_stable}" -eq
   TESTS=( suite:labqual)
 
   # Handle Servo options for the lab qualification tests.
-  if [ -z "${FLAGS_servo_type}" ]; then
-    die "servo type must be specified for labquals to prevent false positives"
-  fi
   if [ "${FLAGS_labqual_stable}" -eq "${FLAGS_TRUE}" ] && [  -z "${FLAGS_servo_host}" -o  -z "${FLAGS_servo_port}" ]; then
     die "servo host and port must be specified for labqual stable tests"
   fi
@@ -99,23 +96,25 @@ if [ "${FLAGS_labqual}" -eq "${FLAGS_TRUE}" ] || [ "${FLAGS_labqual_stable}" -eq
     OPTIONS+=( "--args=servo_port=${FLAGS_servo_port}" )
   fi
 
-  if [ -n "${FLAGS_servo_host}" ]; then
-    GET_SERVO_TYPE_CMD+=( "--host=${FLAGS_servo_host}" )
-  fi
-  if [ -n "${FLAGS_servo_port}" ]; then
-    GET_SERVO_TYPE_CMD+=( "--port=${FLAGS_servo_port}" )
-  fi
-  GET_SERVO_TYPE_CMD+=( "servo_type" )
+  if [ -n "${FLAGS_servo_type}" ]; then
+    if [ -n "${FLAGS_servo_host}" ]; then
+      GET_SERVO_TYPE_CMD+=( "--host=${FLAGS_servo_host}" )
+    fi
+    if [ -n "${FLAGS_servo_port}" ]; then
+      GET_SERVO_TYPE_CMD+=( "--port=${FLAGS_servo_port}" )
+    fi
+    GET_SERVO_TYPE_CMD+=( "servo_type" )
 
-  DETECTED_SERVO_TYPE=""
-  if [ -n "${DEBUG}" ]; then
-    echo "${GET_SERVO_TYPE_CMD[@]}"
-  else
-    DETECTED_SERVO_TYPE=$("${GET_SERVO_TYPE_CMD[@]}")
-  fi
-  if [ -z "${DEBUG}" ]; then
-    if [ "${DETECTED_SERVO_TYPE}" != "${FLAGS_servo_type}" ]; then
-      die "detected servo type ${DETECTED_SERVO_TYPE} does not match expected servo type ${FLAGS_servo_type}"
+    DETECTED_SERVO_TYPE=""
+    if [ -n "${DEBUG}" ]; then
+      echo "${GET_SERVO_TYPE_CMD[@]}"
+    else
+      DETECTED_SERVO_TYPE=$("${GET_SERVO_TYPE_CMD[@]}")
+    fi
+    if [ -z "${DEBUG}" ]; then
+      if [ "${DETECTED_SERVO_TYPE}" != "${FLAGS_servo_type}" ]; then
+        die "detected servo type ${DETECTED_SERVO_TYPE} does not match expected servo type ${FLAGS_servo_type}"
+      fi
     fi
   fi
 fi
