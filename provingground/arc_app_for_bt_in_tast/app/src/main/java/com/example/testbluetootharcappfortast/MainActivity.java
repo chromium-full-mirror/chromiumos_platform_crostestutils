@@ -7,90 +7,63 @@
 package com.example.testbluetootharcappfortast;
 
 import android.os.Bundle;
-import android.os.Handler;
-import android.widget.TextView;
-import android.content.Intent;
 
-import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.activity.result.ActivityResultLauncher;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.FragmentTransaction;
+
+import com.example.testbluetootharcappfortast.ui.About;
+import com.example.testbluetootharcappfortast.ui.Home;
+import com.google.android.material.navigation.NavigationView;
+
 
 public class MainActivity extends AppCompatActivity {
-    private TextView m_txt_bt_availability;
-    private TextView m_txt_bt_permission;
-    private TextView m_txt_bt_activation;
-    private BluetoothController m_bt_controller;
+    private int m_sub_content_id = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        reLoadSubContent(R.id.nav_item_home);
 
-        m_bt_controller = new BluetoothController(this);
-        ActivityResultLauncher<Intent> enableBtLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(), result -> {
-                }
-        );
+        // Initiate the side menu.
+        Toolbar m_toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(m_toolbar);
+        DrawerLayout drawerLayout = findViewById(R.id.main);
+        ActionBarDrawerToggle actionBarDrawerToggle = new ActionBarDrawerToggle(this, drawerLayout, m_toolbar, 0,0);
+        drawerLayout.addDrawerListener(actionBarDrawerToggle);
+        actionBarDrawerToggle.syncState();
 
-        findViewById(R.id.btn_request_bt).setOnClickListener(v -> {
-            m_bt_controller.requestPermissions(this);
+        NavigationView navi_view = findViewById(R.id.nav_view);
+        navi_view.setNavigationItemSelectedListener(item -> {
+            // Dismiss the side menu.
+            drawerLayout.closeDrawer(GravityCompat.START);
+
+            reLoadSubContent(item.getItemId());
+            return true;
         });
-
-        findViewById(R.id.btn_turn_on_bt).setOnClickListener(v -> {
-            m_bt_controller.enableBluetooth(enableBtLauncher);
-        });
-
-        m_txt_bt_availability = findViewById(R.id.txt_bt_availability);
-        m_txt_bt_permission = findViewById(R.id.txt_bt_permission);
-        m_txt_bt_activation = findViewById(R.id.txt_bt_activation);
-
-        Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                m_bt_controller.syncStats();
-                doUpdateUI();
-                handler.postDelayed(this, 1000);
-            }
-        }, 500);
     }
 
-    private void doUpdateUI() {
-        m_bt_controller.syncStats();
-        switch (m_bt_controller.getAvailabilityStatus()) {
-            case NOT_SUPPORTED:
-                m_txt_bt_availability.setText("Bluetooth unavailable");
-                break;
-            case SUPPORTED:
-                m_txt_bt_availability.setText("OK");
-                break;
-            default:
-                m_txt_bt_availability.setText("Unknown status");
-                break;
+    private void reLoadSubContent(int id) {
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        if (id == m_sub_content_id) {
+            // Avoid redundant transaction.
+            return;
+        } else if (id == R.id.nav_item_home) {
+            transaction.replace(R.id.sub_content_view, Home.class, null);
+        } else if (id == R.id.nav_item_about) {
+            transaction.replace(R.id.sub_content_view, About.class, null);
+        } else {
+            return;
         }
-
-        switch (m_bt_controller.getPermissionStatus()) {
-            case NOT_READY:
-                m_txt_bt_permission.setText("NOT ready");
-                break;
-            case ALL_GRANTED:
-                m_txt_bt_permission.setText("OK");
-                break;
-            default:
-                m_txt_bt_permission.setText("Unknown status");
-                break;
-        }
-
-        switch (m_bt_controller.getActivationStatus()) {
-            case DISABLED:
-                m_txt_bt_activation.setText("Bluetooth: Off");
-                break;
-            case ENABLED:
-                m_txt_bt_activation.setText("Bluetooth: On");
-                break;
-            default:
-                m_txt_bt_activation.setText("Unknown status");
-                break;
-        }
+        m_sub_content_id = id;
+        transaction.commit();
     }
 }
+
+
+
+

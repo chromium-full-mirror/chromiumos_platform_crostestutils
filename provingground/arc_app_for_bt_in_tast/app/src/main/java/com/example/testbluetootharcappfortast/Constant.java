@@ -21,4 +21,6 @@ public final class Constant {
         DISABLED,
         ENABLED,
     }
+
+    public static final int REQUEST_CODE_PERMISSION = 1000;
 }

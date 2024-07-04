@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2024 The ChromiumOS Authors
+  ~ Use of this source code is governed by a BSD-style license that can be
+  ~ found in the LICENSE file.
+  -->
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view"
+    tools:ignore="HardcodedText">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_item_home"
+            android:title="Home"/>
+        <item
+            android:id="@+id/nav_item_about"
+            android:title="About this app"/>
+    </group>
+</menu>

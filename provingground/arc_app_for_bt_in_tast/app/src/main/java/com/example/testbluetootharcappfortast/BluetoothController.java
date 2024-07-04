@@ -95,15 +95,19 @@ public class BluetoothController {
         }
     }
 
-    public void enableBluetooth(ActivityResultLauncher<Intent> launcher) {
+    public void bluetoothControl(ActivityResultLauncher<Intent> launcher, boolean turnOn) {
+        Constant.ACTIVATION wantedActivationStat = turnOn ? Constant.ACTIVATION.DISABLED : Constant.ACTIVATION.ENABLED;
+        // BluetoothAdapter.ACTION_REQUEST_ENABLE is hidden and can only be hard-coded.
+        String intentAction = turnOn ? BluetoothAdapter.ACTION_REQUEST_ENABLE : "android.bluetooth.adapter.action.REQUEST_DISABLE";
+
         if (assertStats(
                 Constant.AVAILABILITY.SUPPORTED,
                 Constant.PERMISSION.ALL_GRANTED,
-                Constant.ACTIVATION.DISABLED)
+                wantedActivationStat)
         ) {
-            return;
+            throw new RuntimeException("Skipped");
         }
-        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        Intent enableBtIntent = new Intent(intentAction);
         launcher.launch(enableBtIntent);
     }
 
@@ -113,8 +117,8 @@ public class BluetoothController {
                 Constant.PERMISSION.NOT_READY,
                 null)
         ) {
-            return;
+            throw new RuntimeException("Skipped");
         }
-        activity.requestPermissions(m_bt_permissions.toArray(new String[0]), 100);
+        activity.requestPermissions(m_bt_permissions.toArray(new String[0]), Constant.REQUEST_CODE_PERMISSION);
     }
 }
