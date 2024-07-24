@@ -15,7 +15,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
+	"go.chromium.org/base-os-engprod-tools/internal/pkg/dutio"
 )
 
 const labstationTelemetryCmds = "grep guado_labstation-release /etc/lsb-release; " +
@@ -113,9 +113,9 @@ func newDut(hostname string) dut {
 }
 
 func main() {
-	master := branch{name: "master"}
+	main := branch{name: "main"}
 	prod := branch{name: "prod"}
-	branches := [2]*branch{&master, &prod}
+	branches := [2]*branch{&main, &prod}
 	for _, branch := range branches {
 		gerritBranchResponse := queryGerrit(autotestGetBranchesGerritAPIEndpoint, branch.name)
 		lastCommitWithQuotes := string(*gerritBranchResponse["revision"])

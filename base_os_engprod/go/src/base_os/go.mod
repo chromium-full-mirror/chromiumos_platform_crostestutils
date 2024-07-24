@@ -1,4 +1,4 @@
-module go.chromium.org/fw-engprod-tools
+module go.chromium.org/base-os-engprod-tools
 
 go 1.18
 

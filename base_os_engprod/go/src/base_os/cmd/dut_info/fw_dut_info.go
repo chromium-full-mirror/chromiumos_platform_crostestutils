@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
+	"go.chromium.org/base-os-engprod-tools/internal/pkg/dutio"
 )
 
 const crosDeviceInfoURL = "https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/"

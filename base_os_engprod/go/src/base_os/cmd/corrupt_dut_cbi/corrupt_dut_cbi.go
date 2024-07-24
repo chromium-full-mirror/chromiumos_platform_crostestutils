@@ -16,7 +16,7 @@ import (
 
 	"errors"
 
-	"go.chromium.org/fw-engprod-tools/internal/pkg/dutio"
+	"go.chromium.org/base-os-engprod-tools/internal/pkg/dutio"
 )
 
 // CBILocation stores the port and address needed to reference CBI contents in
