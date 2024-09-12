@@ -44,7 +44,7 @@
         // TODO: Remove this replacement once b/237097115 is fixed
         tester = tester.replace(/%2C/g, '" OR "')
         // Verify if multiple TEs provided
-        tester = ' "te":("' +tester.replace(/,/g, '" OR "')+ '")'
+        tester = ' ("te":("' +tester.replace(/,/g, '" OR "')+ '") OR ("EngProd owners":("' +tester.replace(/,/g, '" OR "') + '")))'
       }
       src = src.replace(/<tester>/g, tester)
       // EngProd Bit Approver

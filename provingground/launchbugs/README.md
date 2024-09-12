@@ -2,7 +2,7 @@
 
 ## Launchbugs -- Launch
 launchbugs.html is a helper that opens filtered launchbugs based on Milestones,
-Test Engineers, and EngProd Bit Approvers on go/launch
+Test Engineers (also EngProd Bit Assignees or Approvers), and EngProd Bit Approvers on go/launch
 
 ## Launchbugs Old -- Monorail
 launchbugsold.html is a helper that opens filtered launchbugs based on
