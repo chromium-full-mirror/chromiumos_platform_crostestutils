@@ -1,0 +1,7 @@
+  49 entries total:
+
+  0:1st timestamp                                     9,983 (0)
+  5:start of verified boot                            31,421 (21,438)
+503:starting to initialize TPM                        34,006 (2,584)
+
+Total Time: 34,006
